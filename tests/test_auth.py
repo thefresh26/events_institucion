@@ -9,12 +9,17 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from app.db.session import Base, SessionLocal, engine  # noqa: E402
 from app.main import app  # noqa: E402
-from app.models import Ciudad, Departamento, Grado, Modulo, ModuloPorRol, Rol, Usuario  # noqa: E402
+from app.core.security import hash_password  # noqa: E402
+from app.models import (CategoriaEvento, Ciudad, Departamento, EstadoEvento, EstadoInscripcion, Grado, Modulo,  # noqa: E402
+                        ModuloPorRol, Rol, Usuario)
 
 Base.metadata.create_all(engine)
 with SessionLocal() as db:
     db.add_all([Rol(id=1, nombre="administrador"), Rol(id=2, nombre="organizador"), Rol(id=3, nombre="colegio"),
-                Departamento(id=1, nombre="Cundinamarca"), Grado(id=1, nombre="9"), Modulo(id=1, nombre="panel")])
+                Departamento(id=1, nombre="Cundinamarca"), Grado(id=1, nombre="9"), Modulo(id=1, nombre="panel"), CategoriaEvento(id=1, nombre="Ciencia"),
+                *[EstadoEvento(nombre=n) for n in ("borrador", "pendiente", "publicado", "rechazado", "cerrado")],
+                *[EstadoInscripcion(nombre=n) for n in ("pendiente", "aceptada", "rechazada")],
+                Usuario(id=1, id_rol=1, correo="admin@x.co", contrasena=hash_password("Admin1234"), nombre="Ad", apellido="Min")])
     db.flush()
     db.add_all([Ciudad(id=1, id_departamento=1, nombre="Bogota"), ModuloPorRol(id_rol=3, id_modulo=1)])
     db.commit()
@@ -92,3 +97,94 @@ def test_bloqueo_por_intentos():
     for _ in range(5):
         assert c.post(f"{API}/auth/login", json={"correo": "nadie@x.co", "contrasena": "mala"}).status_code == 401
     assert c.post(f"{API}/auth/login", json={"correo": "nadie@x.co", "contrasena": "mala"}).status_code == 429
+
+
+# ---------------- Eventos, inscripciones, asistencia y reportes ----------------
+from datetime import datetime, timedelta, timezone  # noqa: E402
+
+from app.api.v1.comun import csv_seguro  # noqa: E402
+
+
+def evento_json(**extra):
+    base = dict(nombre="Feria de Ciencias", lugar="Coliseo", fecha_inicio=(datetime.now(timezone.utc) + timedelta(days=20)).isoformat(),
+                id_categoria=1, id_ciudad=1, cupo_colegios=2, cupo_estudiantes=2)
+    return {**base, **extra}
+
+
+def admin():
+    c = TestClient(app)
+    assert c.post(f"{API}/auth/login", json={"correo": "admin@x.co", "contrasena": "Admin1234"}).status_code == 200
+    return c
+
+
+def publicar(org, adm, **extra):
+    r = org.post(f"{API}/organizador/eventos", json=evento_json(**extra))
+    assert r.status_code == 201 and r.json()["estado"] == "borrador"
+    eid = r.json()["id"]
+    assert org.post(f"{API}/organizador/eventos/{eid}/enviar").json()["estado"] == "pendiente"
+    assert adm.patch(f"{API}/admin/eventos/{eid}/decision", json={"decision": "publicado"}).json()["estado"] == "publicado"
+    return eid
+
+
+def estudiante(col, doc):
+    r = col.post(f"{API}/colegio/estudiantes", json={**EST, "documento": doc})
+    assert r.status_code == 201
+    return r.json()["id"]
+
+
+def test_flujo_de_evento_completo():
+    org, adm = organizador("org10@x.co", "810000001"), admin()
+    col, _ = colegio_de(org, "rector10@x.co", "910000001")
+    e1, e2 = estudiante(col, "1000000001"), estudiante(col, "1000000002")
+    r = org.post(f"{API}/organizador/eventos", json=evento_json())
+    eid = r.json()["id"]
+    assert col.get(f"{API}/colegio/eventos").json() == []                                  # borrador: el colegio no lo ve
+    assert col.post(f"{API}/colegio/eventos/{eid}/inscripcion", json={"estudiantes": [e1]}).status_code == 404
+    assert col.post(f"{API}/organizador/eventos", json=evento_json()).status_code == 403   # un colegio no crea eventos
+    assert col.patch(f"{API}/admin/eventos/{eid}/decision", json={"decision": "publicado"}).status_code == 403
+    assert adm.patch(f"{API}/admin/eventos/{eid}/decision", json={"decision": "publicado"}).status_code == 409  # aun no esta pendiente
+    org.post(f"{API}/organizador/eventos/{eid}/enviar")
+    adm.patch(f"{API}/admin/eventos/{eid}/decision", json={"decision": "publicado"})
+    assert col.get(f"{API}/colegio/eventos").json()[0]["id"] == eid
+    # inscripcion
+    assert col.post(f"{API}/colegio/eventos/{eid}/inscripcion", json={"estudiantes": [e1, e1]}).status_code == 422
+    assert col.post(f"{API}/colegio/eventos/{eid}/inscripcion", json={"estudiantes": [e1, e2, 999]}).status_code == 422
+    assert col.post(f"{API}/colegio/eventos/{eid}/inscripcion", json={"estudiantes": [e1, e2]}).status_code == 201
+    assert col.post(f"{API}/colegio/eventos/{eid}/inscripcion", json={"estudiantes": [e1]}).status_code == 409  # ya inscrito
+    iid = org.get(f"{API}/organizador/inscripciones").json()[0]["id"]
+    assert org.patch(f"{API}/organizador/inscripciones/{iid}", json={"estado": "aceptada"}).status_code == 200
+    assert org.patch(f"{API}/organizador/inscripciones/{iid}", json={"estado": "rechazada"}).status_code == 409  # ya decidida
+    # asistencia
+    grupo = org.get(f"{API}/organizador/eventos/{eid}/asistencia").json()[0]["estudiantes"]
+    marca = [{"id_inscripcion_estudiante": grupo[0]["id_inscripcion_estudiante"], "asistio": True}]
+    assert org.put(f"{API}/organizador/eventos/{eid}/asistencia", json={"marcas": marca}).status_code == 204
+    assert org.put(f"{API}/organizador/eventos/{eid}/asistencia", json={"marcas": [{"id_inscripcion_estudiante": 9999, "asistio": True}]}).status_code == 422
+    # reportes
+    rep = org.get(f"{API}/organizador/eventos/{eid}/reporte/estudiantes.csv")
+    assert rep.status_code == 200 and "text/csv" in rep.headers["content-type"] and "Si" in rep.text and "1000000001" not in rep.text
+    assert "Colegio 910000001" in org.get(f"{API}/organizador/eventos/{eid}/reporte/colegios.csv").text
+
+
+def test_cupos_y_aislamiento_de_eventos():
+    org1, org2, adm = organizador("org11@x.co", "810000002"), organizador("org12@x.co", "810000003"), admin()
+    colA, _ = colegio_de(org1, "rector11@x.co", "910000002")
+    colB, _ = colegio_de(org2, "rector12@x.co", "910000003")
+    eid = publicar(org1, adm, cupo_colegios=1, cupo_estudiantes=1)
+    a1, a2 = estudiante(colA, "2000000001"), estudiante(colA, "2000000002")
+    b1 = estudiante(colB, "2000000003")
+    assert colB.get(f"{API}/colegio/eventos").json() == []                                         # evento de otro organizador
+    assert colB.post(f"{API}/colegio/eventos/{eid}/inscripcion", json={"estudiantes": [b1]}).status_code == 404
+    assert colA.post(f"{API}/colegio/eventos/{eid}/inscripcion", json={"estudiantes": [a1, a2]}).status_code == 422  # cupo por colegio
+    assert colA.post(f"{API}/colegio/eventos/{eid}/inscripcion", json={"estudiantes": [b1]}).status_code == 422      # estudiante ajeno
+    assert colA.post(f"{API}/colegio/eventos/{eid}/inscripcion", json={"estudiantes": [a1]}).status_code == 201
+    assert org2.put(f"{API}/organizador/eventos/{eid}", json=evento_json()).status_code == 404       # evento de otro organizador
+    assert org2.post(f"{API}/organizador/eventos/{eid}/enviar").status_code == 404
+    assert org2.get(f"{API}/organizador/eventos/{eid}/reporte/estudiantes.csv").status_code == 404
+    assert org1.put(f"{API}/organizador/eventos/{eid}", json=evento_json()).status_code == 409       # publicado: ya no se edita
+    assert org1.post(f"{API}/organizador/eventos", json=evento_json(cupo_colegios=0)).status_code == 422
+    assert org1.post(f"{API}/organizador/eventos", json=evento_json(fecha_fin="2000-01-01T00:00:00Z")).status_code == 422
+
+
+def test_csv_no_ejecuta_formulas():
+    assert csv_seguro("=HYPERLINK(\"http://malo\")") == "'=HYPERLINK(\"http://malo\")"
+    assert csv_seguro("Ana") == "Ana" and csv_seguro(None) == ""

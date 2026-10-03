@@ -1,15 +1,20 @@
+import csv
+import io
 import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import Response
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import organizador_actual
+from app.api.v1.comun import csv_seguro, evento_out, id_estado_evento, id_estado_inscripcion, inscritos, no_encontrado
 from app.core.auditoria import registrar
 from app.core.security import hash_password
 from app.db.session import get_db
-from app.models import Ciudad, Colegio, Organizador, Rol, Usuario
-from app.schemas import ActivoIn, ColegioNuevo
+from app.models import (CategoriaEvento, Ciudad, Colegio, Evento, Inscripcion, InscripcionEstudiante, Organizador, Rol,
+                        Usuario)
+from app.schemas import ActivoIn, AsistenciaIn, ColegioNuevo, DecisionInscripcion, EventoIn
 
 router = APIRouter(prefix="/organizador", tags=["organizador"])
 
@@ -58,3 +63,138 @@ def activar_colegio(id_colegio: int, datos: ActivoIn, org: Organizador = Depends
     c.usuario.activo = datos.activo
     db.commit()
     return _colegio_out(c)
+
+
+# ---------------- Eventos ----------------
+def _mio(db: Session, org: Organizador, id_evento: int) -> Evento:
+    e = db.query(Evento).filter_by(id=id_evento, id_organizador=org.id).first()
+    if e is None:
+        raise no_encontrado()
+    return e
+
+
+def _validar_refs(db: Session, d: EventoIn):
+    if db.get(CategoriaEvento, d.id_categoria) is None or db.get(Ciudad, d.id_ciudad) is None:
+        raise HTTPException(422, "Categoría o ciudad inválida")
+
+
+@router.post("/eventos", status_code=201)
+def crear_evento(datos: EventoIn, org: Organizador = Depends(organizador_actual), db: Session = Depends(get_db)):
+    _validar_refs(db, datos)
+    e = Evento(id_organizador=org.id, id_estado=id_estado_evento(db, "borrador"), **datos.model_dump())
+    db.add(e)
+    db.commit()
+    return evento_out(db, e)
+
+
+@router.get("/eventos")
+def mis_eventos(org: Organizador = Depends(organizador_actual), db: Session = Depends(get_db)):
+    return [evento_out(db, e) for e in db.query(Evento).filter_by(id_organizador=org.id).order_by(Evento.fecha_inicio.desc()).limit(500)]
+
+
+@router.put("/eventos/{id_evento}")
+def editar_evento(id_evento: int, datos: EventoIn, org: Organizador = Depends(organizador_actual), db: Session = Depends(get_db)):
+    e = _mio(db, org, id_evento)
+    if e.estado.nombre not in ("borrador", "rechazado"):
+        raise HTTPException(409, "Solo se pueden editar eventos en borrador o rechazados")
+    _validar_refs(db, datos)
+    for k, v in datos.model_dump().items():
+        setattr(e, k, v)
+    e.id_estado = id_estado_evento(db, "borrador")  # editado: vuelve a borrador
+    db.commit()
+    db.refresh(e)
+    return evento_out(db, e)
+
+
+@router.post("/eventos/{id_evento}/enviar")
+def enviar_a_aprobacion(id_evento: int, org: Organizador = Depends(organizador_actual), db: Session = Depends(get_db)):
+    e = _mio(db, org, id_evento)
+    if e.estado.nombre != "borrador":
+        raise HTTPException(409, "Solo se pueden enviar eventos en borrador")
+    e.id_estado = id_estado_evento(db, "pendiente")
+    db.commit()
+    db.refresh(e)
+    return evento_out(db, e)
+
+
+# ---------------- Inscripciones ----------------
+@router.get("/inscripciones")
+def inscripciones(org: Organizador = Depends(organizador_actual), db: Session = Depends(get_db)):
+    q = db.query(Inscripcion).join(Evento).filter(Evento.id_organizador == org.id).order_by(Inscripcion.creada_en.desc())
+    return [{"id": i.id, "evento": i.evento.nombre, "id_evento": i.id_evento, "colegio": i.colegio.nombre,
+             "estudiantes": len(i.estudiantes), "estado": i.estado.nombre, "creada_en": i.creada_en} for i in q.limit(1000)]
+
+
+@router.patch("/inscripciones/{id_inscripcion}")
+def decidir_inscripcion(id_inscripcion: int, datos: DecisionInscripcion, request: Request,
+                        org: Organizador = Depends(organizador_actual), db: Session = Depends(get_db)):
+    i = db.query(Inscripcion).join(Evento).filter(Inscripcion.id == id_inscripcion, Evento.id_organizador == org.id).first()
+    if i is None:
+        raise no_encontrado()
+    if i.estado.nombre != "pendiente":
+        raise HTTPException(409, "Esta inscripción ya fue decidida")
+    if datos.estado == "aceptada" and inscritos(db, i.id_evento, solo_aceptadas=True) >= i.evento.cupo_colegios:
+        raise HTTPException(409, "El evento ya no tiene cupos de colegios")
+    i.id_estado = id_estado_inscripcion(db, datos.estado)
+    db.commit()
+    registrar(db, request, org.id_usuario, f"inscripcion_{datos.estado}", "inscripcion", i.id)
+    return {"id": i.id, "estado": datos.estado}
+
+
+# ---------------- Asistencia ----------------
+@router.get("/eventos/{id_evento}/asistencia")
+def ver_asistencia(id_evento: int, org: Organizador = Depends(organizador_actual), db: Session = Depends(get_db)):
+    _mio(db, org, id_evento)
+    out = []
+    for i in db.query(Inscripcion).filter_by(id_evento=id_evento).all():
+        if i.estado.nombre == "aceptada":
+            out.append({"id_inscripcion": i.id, "colegio": i.colegio.nombre,
+                        "estudiantes": [{"id_inscripcion_estudiante": x.id, "nombre": f"{x.estudiante.nombre} {x.estudiante.apellido}",
+                                         "grado": x.estudiante.grado.nombre, "asistio": x.asistio} for x in i.estudiantes]})
+    return out
+
+
+@router.put("/eventos/{id_evento}/asistencia", status_code=204)
+def guardar_asistencia(id_evento: int, datos: AsistenciaIn, org: Organizador = Depends(organizador_actual), db: Session = Depends(get_db)):
+    _mio(db, org, id_evento)
+    for m in datos.marcas:
+        # El filtro por evento impide marcar asistencia de inscripciones de otros eventos.
+        fila = (db.query(InscripcionEstudiante).join(Inscripcion)
+                .filter(InscripcionEstudiante.id == m.id_inscripcion_estudiante, Inscripcion.id_evento == id_evento).first())
+        if fila is None:
+            raise HTTPException(422, "Marca de asistencia inválida")
+        fila.asistio = m.asistio
+    db.commit()
+
+
+# ---------------- Reportes (CSV) ----------------
+def _csv(nombre: str, filas: list[list]) -> Response:
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    for f in filas:
+        w.writerow([csv_seguro(c) for c in f])
+    return Response("\ufeff" + buf.getvalue(), media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": f'attachment; filename="{nombre}"'})
+
+
+@router.get("/eventos/{id_evento}/reporte/colegios.csv")
+def reporte_colegios(id_evento: int, request: Request, org: Organizador = Depends(organizador_actual), db: Session = Depends(get_db)):
+    e = _mio(db, org, id_evento)
+    filas = [["Evento", "Colegio", "NIT", "Estado", "Estudiantes"]]
+    for i in db.query(Inscripcion).filter_by(id_evento=e.id).all():
+        filas.append([e.nombre, i.colegio.nombre, i.colegio.nit, i.estado.nombre, len(i.estudiantes)])
+    registrar(db, request, org.id_usuario, "descargar_reporte_colegios", "evento", e.id)
+    return _csv(f"colegios_evento_{e.id}.csv", filas)
+
+
+@router.get("/eventos/{id_evento}/reporte/estudiantes.csv")
+def reporte_estudiantes(id_evento: int, request: Request, org: Organizador = Depends(organizador_actual), db: Session = Depends(get_db)):
+    e = _mio(db, org, id_evento)
+    filas = [["Evento", "Colegio", "Estudiante", "Grado", "Asistio"]]
+    for i in db.query(Inscripcion).filter_by(id_evento=e.id).all():
+        if i.estado.nombre == "aceptada":
+            for x in i.estudiantes:  # sin documento: dato minimo necesario para el organizador
+                filas.append([e.nombre, i.colegio.nombre, f"{x.estudiante.nombre} {x.estudiante.apellido}", x.estudiante.grado.nombre,
+                              "Si" if x.asistio else "No"])
+    registrar(db, request, org.id_usuario, "descargar_reporte_estudiantes", "evento", e.id)  # datos de menores: queda auditado
+    return _csv(f"estudiantes_evento_{e.id}.csv", filas)
