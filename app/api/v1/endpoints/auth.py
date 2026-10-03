@@ -7,8 +7,8 @@ from app.core import rate_limit
 from app.core.config import settings
 from app.core.security import create_access_token, hash_password, verify_password
 from app.db.session import get_db
-from app.models import Ciudad, Colegio, Organizador, Rol, Usuario
-from app.schemas import LoginIn, RegistroColegio, RegistroOrganizador
+from app.models import Colegio, Organizador, Rol, Usuario
+from app.schemas import CambioContrasena, LoginIn, RegistroOrganizador
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -26,21 +26,6 @@ def _crear_usuario(db: Session, datos, nombre_rol: str) -> Usuario:
     db.add(u)
     db.flush()
     return u
-
-
-@router.post("/registro/colegio", status_code=201)
-def registro_colegio(datos: RegistroColegio, db: Session = Depends(get_db)):
-    if db.get(Ciudad, datos.id_ciudad) is None:
-        raise HTTPException(422, "Ciudad inválida")
-    try:
-        u = _crear_usuario(db, datos, "colegio")
-        db.add(Colegio(id_usuario=u.id, id_ciudad=datos.id_ciudad, nombre=datos.colegio_nombre,
-                       nit=datos.nit, direccion=datos.direccion, telefono=datos.telefono))
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(409, "Ese correo o NIT ya está registrado")
-    return {"mensaje": PENDIENTE}
 
 
 @router.post("/registro/organizador", status_code=201)
@@ -92,3 +77,11 @@ def logout(response: Response):
 @router.get("/me")
 def me(u: Usuario = Depends(get_current_usuario), db: Session = Depends(get_db)):
     return _perfil(db, u)
+
+
+@router.post("/cambiar-contrasena", status_code=204)
+def cambiar_contrasena(datos: CambioContrasena, u: Usuario = Depends(get_current_usuario), db: Session = Depends(get_db)):
+    if not verify_password(datos.actual, u.contrasena):
+        raise HTTPException(400, "La contraseña actual no es correcta")
+    u.contrasena = hash_password(datos.nueva)
+    db.commit()

@@ -68,6 +68,7 @@ class Colegio(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     id_usuario: Mapped[int] = mapped_column(ForeignKey("usuario.id"), unique=True)
     id_ciudad: Mapped[int] = mapped_column(ForeignKey("ciudad.id"))
+    id_organizador: Mapped[int] = mapped_column(ForeignKey("organizador.id"))  # quien registro al colegio
     nombre: Mapped[str] = mapped_column(String(150))
     nit: Mapped[str] = mapped_column(String(20), unique=True)
     direccion: Mapped[str | None] = mapped_column(String(200))

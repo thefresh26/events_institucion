@@ -30,3 +30,13 @@ def requerir_rol(*roles: str):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permisos para esta acción")
         return usuario
     return dependencia
+
+
+def organizador_actual(u: Usuario = Depends(requerir_rol("organizador")), db: Session = Depends(get_db)):
+    from app.models import Organizador
+    return db.query(Organizador).filter_by(id_usuario=u.id).one()
+
+
+def colegio_actual(u: Usuario = Depends(requerir_rol("colegio")), db: Session = Depends(get_db)):
+    from app.models import Colegio
+    return db.query(Colegio).filter_by(id_usuario=u.id).one()
