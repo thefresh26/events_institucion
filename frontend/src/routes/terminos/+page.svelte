@@ -1,0 +1,31 @@
+<svelte:head>
+	<title>Términos y condiciones | Eventos Escolares</title>
+	<meta name="description" content="Condiciones de uso de la plataforma de eventos escolares para organizadores y colegios." />
+</svelte:head>
+
+<div class="auth">
+	<article class="card" style="width:min(760px,100%)">
+		<h1>Términos y condiciones</h1>
+		<p class="mut">Última actualización: octubre de 2026.</p>
+
+		<h2>1. Objeto</h2>
+		<p>La plataforma permite a organizadores publicar eventos escolares y a los colegios inscribirse y registrar a sus estudiantes en ellos.</p>
+
+		<h2>2. Cuentas y roles</h2>
+		<p>Las cuentas de organizadores son aprobadas por un administrador. Los colegios reciben su acceso del organizador que los registra y deben cambiar la contraseña temporal. Cada persona es responsable de la confidencialidad de su contraseña y de la actividad de su cuenta.</p>
+
+		<h2>3. Responsabilidades</h2>
+		<p>El colegio declara contar con la autorización de los acudientes antes de registrar a un estudiante. El organizador se compromete a usar los datos de los estudiantes solo para el evento en el que participan. Está prohibido usar la plataforma para fines ilícitos o intentar acceder a datos ajenos.</p>
+
+		<h2>4. Eventos</h2>
+		<p>Los eventos son publicados por el organizador tras la aprobación de un administrador. La plataforma no es responsable por la realización, cambios o cancelación de los eventos, que corresponden al organizador.</p>
+
+		<h2>5. Disponibilidad y cambios</h2>
+		<p>Procuramos mantener el servicio disponible, sin garantizar que esté libre de interrupciones. Podemos actualizar estos términos y la nueva versión se publicará en esta página.</p>
+
+		<h2>6. Ley aplicable</h2>
+		<p>Estos términos se rigen por las leyes de la República de Colombia. Contacto: [CORREO DE CONTACTO].</p>
+
+		<p class="pie"><a href="/">Inicio</a><a href="/politica-de-privacidad">Política de privacidad</a></p>
+	</article>
+</div>

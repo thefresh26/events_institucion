@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /$
+Allow: /login
+Allow: /registro
+Allow: /politica-de-privacidad
+Allow: /terminos
+Disallow: /panel
+Disallow: /admin/
+Disallow: /organizador/
+Disallow: /colegio/
+Disallow: /cuenta
+Disallow: /api/

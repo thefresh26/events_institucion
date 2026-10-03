@@ -188,3 +188,17 @@ def test_cupos_y_aislamiento_de_eventos():
 def test_csv_no_ejecuta_formulas():
     assert csv_seguro("=HYPERLINK(\"http://malo\")") == "'=HYPERLINK(\"http://malo\")"
     assert csv_seguro("Ana") == "Ana" and csv_seguro(None) == ""
+
+
+def test_frontend_servido_con_cabeceras_de_seguridad():
+    from pathlib import Path
+    if not (Path(__file__).resolve().parents[1] / "app" / "frontend_dist" / "index.html").is_file():
+        return  # el frontend aun no esta compilado
+    c = TestClient(app)
+    for ruta in ("/", "/login", "/panel", "/ruta-inventada"):  # SPA: todas devuelven la pagina base
+        r = c.get(ruta)
+        assert r.status_code == 200 and "<html" in r.text
+        assert "frame-ancestors 'none'" in r.headers["content-security-policy"]
+        assert r.headers["x-content-type-options"] == "nosniff"
+    assert c.get("/robots.txt").status_code == 200
+    assert c.get("/../.env").status_code in (200, 404) and "SECRET_KEY" not in c.get("/../.env").text  # no se sale de la carpeta
