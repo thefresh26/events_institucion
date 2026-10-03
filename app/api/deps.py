@@ -1,9 +1,9 @@
 from fastapi import Depends, HTTPException, Request, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.security import decode_access_token
 from app.db.session import get_db
-from app.models import Usuario
+from app.models import Rol, Usuario
 
 NO_AUTH = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="No se pudo validar la sesión")
 
@@ -17,7 +17,8 @@ def get_current_usuario(request: Request, db: Session = Depends(get_db)) -> Usua
         id_usuario = int(decode_access_token(token)["sub"])
     except Exception:
         raise NO_AUTH
-    usuario = db.get(Usuario, id_usuario)
+    # Una sola consulta trae usuario + rol + modulos (antes eran 3 viajes a Neon).
+    usuario = db.query(Usuario).options(joinedload(Usuario.rol).joinedload(Rol.modulos)).filter(Usuario.id == id_usuario).first()
     if usuario is None or not usuario.activo:
         raise NO_AUTH
     return usuario

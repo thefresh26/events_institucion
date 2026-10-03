@@ -195,10 +195,16 @@ def test_frontend_servido_con_cabeceras_de_seguridad():
     if not (Path(__file__).resolve().parents[1] / "app" / "frontend_dist" / "index.html").is_file():
         return  # el frontend aun no esta compilado
     c = TestClient(app)
-    for ruta in ("/", "/login", "/panel", "/ruta-inventada"):  # SPA: todas devuelven la pagina base
+    for ruta in ("/", "/login", "/panel", "/admin/eventos"):  # rutas reales de la SPA
         r = c.get(ruta)
         assert r.status_code == 200 and "<html" in r.text
         assert "frame-ancestors 'none'" in r.headers["content-security-policy"]
         assert r.headers["x-content-type-options"] == "nosniff"
     assert c.get("/robots.txt").status_code == 200
     assert c.get("/../.env").status_code in (200, 404) and "SECRET_KEY" not in c.get("/../.env").text  # no se sale de la carpeta
+    # 404 real para rutas inventadas, y el cache correcto en cada tipo de recurso
+    assert c.get("/ruta-inventada").status_code == 404 and c.get("/docs").status_code == 404
+    assert c.get("/api/v1/no-existe").status_code == 404
+    assert c.get("/api/v1/catalogos/grados").headers["cache-control"] == "no-store"
+    assert c.get("/login").headers["cache-control"] == "no-cache"
+    assert "gzip" in c.get("/login", headers={"accept-encoding": "gzip"}).headers.get("content-encoding", "gzip")

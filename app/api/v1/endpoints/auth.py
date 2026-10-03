@@ -42,8 +42,8 @@ def registro_organizador(datos: RegistroOrganizador, db: Session = Depends(get_d
 
 
 def _perfil(db: Session, u: Usuario) -> dict:
-    col = db.query(Colegio).filter_by(id_usuario=u.id).first()
-    org = db.query(Organizador).filter_by(id_usuario=u.id).first()
+    col = db.query(Colegio).filter_by(id_usuario=u.id).first() if u.rol.nombre == "colegio" else None
+    org = db.query(Organizador).filter_by(id_usuario=u.id).first() if u.rol.nombre == "organizador" else None
     return {"id": u.id, "correo": u.correo, "nombre": u.nombre, "apellido": u.apellido, "rol": u.rol.nombre,
             "modulos": sorted(m.nombre for m in u.rol.modulos),
             "id_colegio": col.id if col else None, "id_organizador": org.id if org else None}
