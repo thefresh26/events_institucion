@@ -1,0 +1,1 @@
+import{b as s}from"./BkWIawp-.js";import{a as o}from"./I6txItVf.js";const a=s({usuario:null,cargando:!0});async function t(){try{a.usuario=await o("/auth/me")}catch{a.usuario=null}a.cargando=!1}async function i(){await o("/auth/logout",{method:"POST"}).catch(()=>{}),a.usuario=null}export{i as a,t as c,a as s};
