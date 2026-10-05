@@ -13,7 +13,7 @@
 	});
 </script>
 
-<svelte:head><title>Colegios | Eventos Escolares</title></svelte:head>
+<svelte:head><title>Colegios | Conexión Escolar</title></svelte:head>
 
 <h2>Colegios</h2>
 <p class="sub">Colegios registrados por los organizadores.</p>

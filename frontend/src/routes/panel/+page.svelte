@@ -31,10 +31,10 @@
 	});
 </script>
 
-<svelte:head><title>Panel | Eventos Escolares</title></svelte:head>
+<svelte:head><title>Panel | Conexión Escolar</title></svelte:head>
 
 <h2>Panel</h2>
-<p class="sub">Hola, {sesion.usuario.nombre}.</p>
+<p class="sub">Hola, {sesion.usuario.nombre}. Este es el resumen de hoy.</p>
 {#if error}<p class="err" role="alert">{error}</p>{/if}
 <div class="grid g4">
 	{#each tarjetas as [nombre, valor]}

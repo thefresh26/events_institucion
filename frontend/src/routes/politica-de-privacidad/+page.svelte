@@ -1,9 +1,10 @@
 <svelte:head>
-	<title>Política de privacidad | Eventos Escolares</title>
+	<title>Política de privacidad | Conexión Escolar</title>
 	<meta name="description" content="Cómo tratamos los datos personales de organizadores, colegios y estudiantes, según la Ley 1581 de 2012 de Colombia." />
 </svelte:head>
 
 <div class="auth">
+	<img class="auth-logo" src="/logo.png" alt="Conexión Escolar" width="230" height="157" />
 	<article class="card" style="width:min(760px,100%)">
 		<h1>Política de tratamiento de datos personales</h1>
 		<p class="mut">Última actualización: octubre de 2026. Conforme a la Ley 1581 de 2012 y el Decreto 1377 de 2013 (habeas data).</p>

@@ -23,11 +23,12 @@
 </script>
 
 <svelte:head>
-	<title>Iniciar sesión | Eventos Escolares</title>
+	<title>Iniciar sesión | Conexión Escolar</title>
 	<meta name="description" content="Ingresa a la plataforma de eventos escolares como administrador, organizador o colegio." />
 </svelte:head>
 
 <div class="auth">
+	<img class="auth-logo" src="/logo.png" alt="Conexión Escolar" width="230" height="157" />
 	<form class="card" onsubmit={entrar}>
 		<h1>Iniciar sesión</h1>
 		<p class="sub">Ingresa con la cuenta de tu colegio u organización.</p>

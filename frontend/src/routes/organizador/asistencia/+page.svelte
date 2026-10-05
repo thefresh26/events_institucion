@@ -32,7 +32,7 @@
 	}
 </script>
 
-<svelte:head><title>Asistencia | Eventos Escolares</title></svelte:head>
+<svelte:head><title>Asistencia | Conexión Escolar</title></svelte:head>
 
 <h2>Asistencia</h2>
 <p class="sub">Marca los estudiantes que asistieron. Solo aparecen colegios con inscripción aceptada.</p>

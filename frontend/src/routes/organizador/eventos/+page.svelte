@@ -59,7 +59,7 @@
 	}
 </script>
 
-<svelte:head><title>Mis eventos | Eventos Escolares</title></svelte:head>
+<svelte:head><title>Mis eventos | Conexión Escolar</title></svelte:head>
 
 <h2>Mis eventos</h2>
 <p class="sub">Crea tus eventos y envíalos al administrador para que los publique.</p>

@@ -25,7 +25,7 @@
 	}
 </script>
 
-<svelte:head><title>Inscripciones | Eventos Escolares</title></svelte:head>
+<svelte:head><title>Inscripciones | Conexión Escolar</title></svelte:head>
 
 <h2>Inscripciones</h2>
 <p class="sub">Colegios que quieren participar en tus eventos.</p>

@@ -15,7 +15,7 @@
 	});
 </script>
 
-<svelte:head><title>Reportes | Eventos Escolares</title></svelte:head>
+<svelte:head><title>Reportes | Conexión Escolar</title></svelte:head>
 
 <h2>Reportes</h2>
 <p class="sub">Descarga listados en CSV (se abren en Excel).</p>

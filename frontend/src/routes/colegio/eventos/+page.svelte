@@ -40,7 +40,7 @@
 	}
 </script>
 
-<svelte:head><title>Eventos | Eventos Escolares</title></svelte:head>
+<svelte:head><title>Eventos | Conexión Escolar</title></svelte:head>
 
 <h2>Eventos disponibles</h2>
 <p class="sub">Eventos publicados por tu organizador. Matricula a tu colegio eligiendo a los estudiantes que participarán.</p>

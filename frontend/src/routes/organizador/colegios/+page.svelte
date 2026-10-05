@@ -45,7 +45,7 @@
 	}
 </script>
 
-<svelte:head><title>Mis colegios | Eventos Escolares</title></svelte:head>
+<svelte:head><title>Mis colegios | Conexión Escolar</title></svelte:head>
 
 <h2>Mis colegios</h2>
 <p class="sub">Registra a los colegios que participarán en tus eventos. Ellos registran a sus propios estudiantes.</p>

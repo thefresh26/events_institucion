@@ -5,6 +5,8 @@
 	import { page } from '$app/stores';
 	import { sesion, cargarSesion, salir } from '$lib/session.svelte.js';
 	import { aviso } from '$lib/toast.svelte.js';
+	import { iniciarTema } from '$lib/tema.svelte.js';
+	import BotonTema from '$lib/BotonTema.svelte';
 
 	let { children } = $props();
 
@@ -15,6 +17,8 @@
 		aprobar_eventos: ['/admin/eventos', 'Eventos'],
 		organizadores: ['/admin/organizadores', 'Organizadores'],
 		colegios: ['/admin/colegios', 'Colegios'],
+		usuarios: ['/admin/usuarios', 'Usuarios'],
+		roles: ['/admin/roles', 'Roles'],
 		mis_eventos: ['/organizador/eventos', 'Mis eventos'],
 		mis_colegios: ['/organizador/colegios', 'Mis colegios'],
 		inscripciones: ['/organizador/inscripciones', 'Inscripciones'],
@@ -28,7 +32,10 @@
 		Object.entries(RUTAS).filter(([k]) => sesion.usuario?.modulos.includes(k)).map(([, v]) => v)
 	);
 
-	onMount(cargarSesion);
+	onMount(() => {
+		iniciarTema();
+		cargarSesion();
+	});
 
 	$effect(() => {
 		if (sesion.cargando) return;
@@ -44,11 +51,11 @@
 </script>
 
 {#if sesion.cargando}
-	<p class="centro mut" role="status">Cargando…</p>
+	<div class="centro mut" role="status"><div class="cargando"></div>Cargando…</div>
 {:else if sesion.usuario}
 	<div class="app">
 		<aside>
-			<h1><span class="logo">E</span>Eventos Escolares</h1>
+			<a class="logo-lado" href="/panel" aria-label="Conexión Escolar, inicio"><img src="/logo.png" alt="Conexión Escolar" width="200" height="136" /></a>
 			<nav aria-label="Principal">
 				{#each menu as [ruta, nombre]}
 					<a class="nav" class:on={$page.url.pathname.startsWith(ruta)} href={ruta}>{nombre}</a>
@@ -58,12 +65,14 @@
 				<strong>{sesion.usuario.nombre} {sesion.usuario.apellido}</strong>
 				<span>{sesion.usuario.rol}</span>
 				<a href="/cuenta">Mi cuenta</a>
+				<BotonTema />
 				<button class="btn o s" onclick={cerrarSesion}>Cerrar sesión</button>
 			</div>
 		</aside>
 		<main>{@render children()}</main>
 	</div>
 {:else}
+	<BotonTema flota />
 	{@render children()}
 {/if}
 

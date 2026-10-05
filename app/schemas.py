@@ -126,3 +126,39 @@ class MarcaAsistencia(_Base):
 
 class AsistenciaIn(_Base):
     marcas: list[MarcaAsistencia] = Field(max_length=2000)
+
+
+class UsuarioNuevo(_Base):
+    """El administrador crea cuentas ya activas (administrador u organizador)."""
+    correo: EmailStr
+    nombre: str = Field(min_length=2, max_length=100)
+    apellido: str = Field(min_length=2, max_length=100)
+    rol: Literal["administrador", "organizador"]
+    organizacion_nombre: str | None = Field(default=None, min_length=3, max_length=150)
+    nit: str | None = None
+    telefono: str | None = None
+
+    @field_validator("nit")
+    @classmethod
+    def nit_ok(cls, v):
+        if v and not NIT.match(v):
+            raise ValueError("NIT inválido (solo números y guion)")
+        return v
+
+    @field_validator("telefono")
+    @classmethod
+    def tel_ok(cls, v):
+        if v and not TEL.match(v):
+            raise ValueError("Teléfono inválido")
+        return v
+
+
+class UsuarioEdita(_Base):
+    nombre: str | None = Field(default=None, min_length=2, max_length=100)
+    apellido: str | None = Field(default=None, min_length=2, max_length=100)
+    rol: Literal["administrador", "organizador", "colegio"] | None = None
+    activo: bool | None = None
+
+
+class ModulosIn(_Base):
+    modulos: list[int] = Field(max_length=100)

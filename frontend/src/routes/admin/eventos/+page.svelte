@@ -39,7 +39,7 @@
 	}
 </script>
 
-<svelte:head><title>Eventos | Eventos Escolares</title></svelte:head>
+<svelte:head><title>Eventos | Conexión Escolar</title></svelte:head>
 
 <h2>Eventos</h2>
 <p class="sub">Revisa y publica los eventos que envían los organizadores.</p>

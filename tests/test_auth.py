@@ -208,3 +208,55 @@ def test_frontend_servido_con_cabeceras_de_seguridad():
     assert c.get("/api/v1/catalogos/grados").headers["cache-control"] == "no-store"
     assert c.get("/login").headers["cache-control"] == "no-cache"
     assert "gzip" in c.get("/login", headers={"accept-encoding": "gzip"}).headers.get("content-encoding", "gzip")
+
+
+# ---------------- Administracion de usuarios y roles ----------------
+def test_admin_gestiona_usuarios_y_roles():
+    from app.db.seed import asegurar_modulos_admin
+    with SessionLocal() as db:
+        asegurar_modulos_admin(db)
+        asegurar_modulos_admin(db)  # idempotente
+    adm = admin()
+    assert {"usuarios", "roles"} <= set(adm.get(f"{API}/auth/me").json()["modulos"])
+    # un organizador no entra a estas rutas
+    org = organizador("org20@x.co", "820000001")
+    assert org.get(f"{API}/admin/usuarios").status_code == 403 and org.get(f"{API}/admin/roles").status_code == 403
+    # el admin crea un organizador activo con contrasena temporal y ese organizador puede entrar
+    r = adm.post(f"{API}/admin/usuarios", json=dict(correo="Nuevo.Org@x.co", nombre="Luis", apellido="Paz", rol="organizador",
+                                                    organizacion_nombre="Fundacion Nueva", nit="820000002"))
+    assert r.status_code == 201 and r.json()["usuario"]["perfil"] == "Fundacion Nueva"
+    c = TestClient(app)
+    assert c.post(f"{API}/auth/login", json={"correo": "nuevo.org@x.co", "contrasena": r.json()["contrasena_temporal"]}).status_code == 200
+    assert c.get(f"{API}/organizador/eventos").status_code == 200
+    # validaciones
+    assert adm.post(f"{API}/admin/usuarios", json=dict(correo="a1@x.co", nombre="Ana", apellido="Paz", rol="organizador")).status_code == 422
+    assert adm.post(f"{API}/admin/usuarios", json=dict(correo="a2@x.co", nombre="Ana", apellido="Paz", rol="colegio")).status_code == 422
+    assert adm.post(f"{API}/admin/usuarios", json=dict(correo="nuevo.org@x.co", nombre="Ana", apellido="Paz", rol="administrador")).status_code == 409
+    # crear otro administrador, cambiar datos, desactivar y restablecer
+    a2 = adm.post(f"{API}/admin/usuarios", json=dict(correo="adm2@x.co", nombre="Eva", apellido="Sol", rol="administrador")).json()
+    uid = a2["usuario"]["id"]
+    assert adm.patch(f"{API}/admin/usuarios/{uid}", json={"nombre": "Evelyn"}).json()["nombre"] == "Evelyn"
+    assert adm.patch(f"{API}/admin/usuarios/{uid}", json={"rol": "organizador"}).status_code == 409   # sin perfil de organizador
+    assert adm.patch(f"{API}/admin/usuarios/{uid}", json={"id_rol": 3}).status_code == 422            # campos no permitidos
+    assert adm.patch(f"{API}/admin/usuarios/{uid}", json={"activo": False}).json()["activo"] is False
+    assert adm.post(f"{API}/admin/usuarios/{uid}/restablecer").json()["contrasena_temporal"]
+    # un organizador puede volverse administrador (y volver, porque conserva su perfil)
+    oid = adm.get(f"{API}/admin/usuarios", params={"q": "org20"}).json()[0]["id"]
+    assert adm.patch(f"{API}/admin/usuarios/{oid}", json={"rol": "administrador"}).json()["rol"] == "administrador"
+    assert adm.patch(f"{API}/admin/usuarios/{oid}", json={"rol": "organizador"}).json()["rol"] == "organizador"
+    # el admin no se puede quitar el acceso a si mismo
+    yo = adm.get(f"{API}/admin/usuarios", params={"q": "admin@x.co"}).json()[0]["id"]
+    assert adm.patch(f"{API}/admin/usuarios/{yo}", json={"activo": False}).status_code == 409
+    assert adm.patch(f"{API}/admin/usuarios/{yo}", json={"rol": "colegio"}).status_code == 409
+    assert adm.post(f"{API}/admin/usuarios/{yo}/restablecer").status_code == 409
+    assert adm.patch(f"{API}/admin/usuarios/99999", json={"nombre": "Xx"}).status_code == 404
+    assert adm.get(f"{API}/admin/usuarios", params={"rol": "administrador", "estado": "activo"}).status_code == 200
+    # roles y modulos
+    d = adm.get(f"{API}/admin/roles").json()
+    por = {r["nombre"]: r for r in d["roles"]}
+    assert por["administrador"]["bloqueado"] and por["organizador"]["usuarios"] >= 1
+    panel = next(m["id"] for m in d["modulos"] if m["nombre"] == "panel")
+    assert adm.put(f"{API}/admin/roles/{por['organizador']['id']}/modulos", json={"modulos": [panel]}).json()["modulos"] == [panel]
+    assert adm.put(f"{API}/admin/roles/{por['organizador']['id']}/modulos", json={"modulos": [99999]}).status_code == 422
+    assert adm.put(f"{API}/admin/roles/{por['administrador']['id']}/modulos", json={"modulos": []}).status_code == 409
+    assert org.put(f"{API}/admin/roles/1/modulos", json={"modulos": []}).status_code == 403

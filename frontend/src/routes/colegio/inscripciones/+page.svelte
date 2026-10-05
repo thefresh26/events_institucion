@@ -14,7 +14,7 @@
 	});
 </script>
 
-<svelte:head><title>Mis inscripciones | Eventos Escolares</title></svelte:head>
+<svelte:head><title>Mis inscripciones | Conexión Escolar</title></svelte:head>
 
 <h2>Mis inscripciones</h2>
 <p class="sub">Estado de tu colegio en cada evento.</p>

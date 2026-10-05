@@ -24,7 +24,7 @@
 	}
 </script>
 
-<svelte:head><title>Organizadores | Eventos Escolares</title></svelte:head>
+<svelte:head><title>Organizadores | Conexión Escolar</title></svelte:head>
 
 <h2>Organizadores</h2>
 <p class="sub">Aprueba las cuentas nuevas antes de que puedan crear eventos.</p>

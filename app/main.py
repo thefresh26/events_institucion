@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -12,7 +13,20 @@ from app.core.config import settings
 
 log = logging.getLogger("events")
 # docs_url=None: no exponemos la documentacion interactiva en produccion.
-app = FastAPI(title="Eventos para colegios - API", docs_url=None, redoc_url=None, openapi_url=None)
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    try:  # modulos del panel de administracion (idempotente); un fallo aqui no debe tumbar el servidor
+        from app.db.seed import asegurar_modulos_admin
+        from app.db.session import SessionLocal
+        with SessionLocal() as db:
+            asegurar_modulos_admin(db)
+    except Exception:
+        log.exception("No se pudieron asegurar los modulos de administracion")
+    yield
+
+
+app = FastAPI(title="Eventos para colegios - API", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
 
 app.add_middleware(GZipMiddleware, minimum_size=500)
 app.add_middleware(CORSMiddleware, allow_origins=settings.origenes_permitidos, allow_credentials=True,

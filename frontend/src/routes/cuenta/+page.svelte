@@ -20,7 +20,7 @@
 	}
 </script>
 
-<svelte:head><title>Mi cuenta | Eventos Escolares</title></svelte:head>
+<svelte:head><title>Mi cuenta | Conexión Escolar</title></svelte:head>
 
 <h2>Mi cuenta</h2>
 <p class="sub">{sesion.usuario.correo} · {sesion.usuario.rol}</p>

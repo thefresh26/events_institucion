@@ -25,11 +25,12 @@
 </script>
 
 <svelte:head>
-	<title>Registrar organización | Eventos Escolares</title>
+	<title>Registrar organización | Conexión Escolar</title>
 	<meta name="description" content="Registra tu organización para crear eventos escolares e invitar a colegios a participar." />
 </svelte:head>
 
 <div class="auth">
+	<img class="auth-logo" src="/logo.png" alt="Conexión Escolar" width="230" height="157" />
 	{#if listo}
 		<div class="card" role="status">
 			<h1>Registro recibido</h1>

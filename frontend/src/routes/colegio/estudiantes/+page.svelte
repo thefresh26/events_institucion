@@ -46,7 +46,7 @@
 	}
 </script>
 
-<svelte:head><title>Estudiantes | Eventos Escolares</title></svelte:head>
+<svelte:head><title>Estudiantes | Conexión Escolar</title></svelte:head>
 
 <h2>Mis estudiantes</h2>
 <p class="sub">Solo tu colegio puede ver y editar esta lista.</p>
