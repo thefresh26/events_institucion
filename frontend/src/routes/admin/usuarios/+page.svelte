@@ -69,6 +69,17 @@
 		}
 	}
 
+	async function eliminar(u) {
+		if (!confirm(`¿Eliminar a ${u.correo}? Esta acción no se puede deshacer.`)) return;
+		try {
+			await api(`/admin/usuarios/${u.id}`, { method: 'DELETE' });
+			avisar('Usuario eliminado');
+			cargar();
+		} catch (e) {
+			avisar(e.message, true);
+		}
+	}
+
 	async function restablecer(u) {
 		if (!confirm(`¿Restablecer la contraseña de ${u.correo}? La anterior dejará de funcionar.`)) return;
 		try {
@@ -120,6 +131,7 @@
 								{:else}
 									<button class="btn s" onclick={() => activar(u, true)}>Activar</button>
 								{/if}
+								<button class="btn r s" onclick={() => eliminar(u)}>Eliminar</button>
 							{:else}
 								<span class="mut">(tú)</span>
 							{/if}

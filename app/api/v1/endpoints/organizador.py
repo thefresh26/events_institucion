@@ -12,7 +12,7 @@ from app.api.v1.comun import csv_seguro, evento_out, id_estado_evento, id_estado
 from app.core.auditoria import registrar
 from app.core.security import hash_password
 from app.db.session import get_db
-from app.models import (CategoriaEvento, Ciudad, Colegio, Evento, Inscripcion, InscripcionEstudiante, Organizador, Rol,
+from app.models import (AutorizacionAcudiente, Auditoria, CategoriaEvento, Ciudad, Colegio, Estudiante, Evento, Inscripcion, InscripcionEstudiante, Organizador, Rol,
                         Usuario)
 from app.schemas import ActivoIn, AsistenciaIn, ColegioNuevo, DecisionInscripcion, EventoIn
 
@@ -63,6 +63,27 @@ def activar_colegio(id_colegio: int, datos: ActivoIn, org: Organizador = Depends
     c.usuario.activo = datos.activo
     db.commit()
     return _colegio_out(c)
+
+
+@router.delete("/colegios/{id_colegio}", status_code=204)
+def eliminar_colegio(id_colegio: int, request: Request, org: Organizador = Depends(organizador_actual), db: Session = Depends(get_db)):
+    """Borra el colegio y sus estudiantes. Solo si nunca se inscribio a un evento (si no, usar Desactivar: conserva el historial)."""
+    c = db.query(Colegio).filter_by(id=id_colegio, id_organizador=org.id).first()
+    if c is None:
+        raise HTTPException(404, "Colegio no encontrado")
+    if db.query(Inscripcion).filter_by(id_colegio=c.id).first():
+        raise HTTPException(409, "El colegio tiene inscripciones en eventos; desactívalo en lugar de eliminarlo")
+    ids = [i for (i,) in db.query(Estudiante.id).filter_by(id_colegio=c.id)]
+    if ids:
+        db.query(AutorizacionAcudiente).filter(AutorizacionAcudiente.id_estudiante.in_(ids)).delete(synchronize_session=False)
+        db.query(Estudiante).filter(Estudiante.id.in_(ids)).delete(synchronize_session=False)
+    id_usuario = c.id_usuario
+    db.query(Auditoria).filter_by(id_usuario=id_usuario).update({"id_usuario": None})
+    registrar(db, request, org.id_usuario, "eliminar_colegio", "colegio", c.id)
+    db.delete(c)
+    db.flush()
+    db.delete(db.get(Usuario, id_usuario))
+    db.commit()
 
 
 # ---------------- Eventos ----------------

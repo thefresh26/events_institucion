@@ -11,7 +11,7 @@ from app.api.v1.comun import no_encontrado
 from app.core.auditoria import registrar
 from app.core.security import hash_password
 from app.db.session import get_db
-from app.models import Colegio, Modulo, ModuloPorRol, Organizador, Rol, Usuario
+from app.models import Auditoria, Colegio, Evento, Modulo, ModuloPorRol, Organizador, Rol, Usuario
 from app.schemas import ModulosIn, UsuarioEdita, UsuarioNuevo
 
 router = APIRouter(prefix="/admin", tags=["admin-usuarios"])
@@ -99,6 +99,27 @@ def restablecer(id_usuario: int, request: Request, admin: Usuario = Admin, db: S
     db.commit()
     registrar(db, request, admin.id, "restablecer_contrasena", "usuario", u.id)
     return {"contrasena_temporal": temporal}
+
+
+@router.delete("/usuarios/{id_usuario}")
+def eliminar(id_usuario: int, request: Request, admin: Usuario = Admin, db: Session = Depends(get_db)):
+    """Elimina el usuario y su perfil. Si ya tiene eventos, estudiantes, etc., no se borra: se desactiva."""
+    u = db.get(Usuario, id_usuario) or (_ for _ in ()).throw(no_encontrado())
+    if u.id == admin.id:
+        raise HTTPException(409, "No puedes eliminar tu propia cuenta")
+    try:
+        # El historial se conserva, solo se desvincula del usuario.
+        db.query(Auditoria).filter(Auditoria.id_usuario == u.id).update({"id_usuario": None})
+        db.query(Evento).filter(Evento.id_aprobador == u.id).update({"id_aprobador": None})
+        db.query(Organizador).filter_by(id_usuario=u.id).delete()
+        db.query(Colegio).filter_by(id_usuario=u.id).delete()
+        db.delete(u)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(409, "Este usuario ya tiene información asociada (eventos, inscripciones…). Mejor desactívalo")
+    registrar(db, request, admin.id, "eliminar_usuario", "usuario", id_usuario)
+    return {"ok": True}
 
 
 @router.get("/roles")

@@ -43,6 +43,16 @@
 			avisar(e.message, true);
 		}
 	}
+	async function eliminar(c) {
+		if (!confirm(`¿Eliminar "${c.nombre}" y todos sus estudiantes? Esta acción no se puede deshacer.`)) return;
+		try {
+			await api(`/organizador/colegios/${c.id}`, { method: 'DELETE' });
+			avisar('Colegio eliminado');
+			cargar();
+		} catch (e) {
+			avisar(e.message, true);
+		}
+	}
 </script>
 
 <svelte:head><title>Mis colegios | Conexión Escolar</title></svelte:head>
@@ -58,7 +68,7 @@
 				<tr>
 					<td><strong>{c.nombre}</strong></td><td>{c.nit}</td><td>{c.ciudad}</td><td>{c.contacto}<br /><span class="mut">{c.correo}</span></td>
 					<td><span class="b {c.activo ? 'publicado' : 'borrador'}">{c.activo ? 'Activo' : 'Inactivo'}</span></td>
-					<td><button class="btn o s" onclick={() => activar(c, !c.activo)}>{c.activo ? 'Desactivar' : 'Activar'}</button></td>
+					<td><button class="btn o s" onclick={() => activar(c, !c.activo)}>{c.activo ? 'Desactivar' : 'Activar'}</button> <button class="btn o s" onclick={() => eliminar(c)}>Eliminar</button></td>
 				</tr>
 			{:else}
 				<tr><td colspan="6" class="mut">Aún no has registrado colegios.</td></tr>

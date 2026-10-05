@@ -260,3 +260,32 @@ def test_admin_gestiona_usuarios_y_roles():
     assert adm.put(f"{API}/admin/roles/{por['organizador']['id']}/modulos", json={"modulos": [99999]}).status_code == 422
     assert adm.put(f"{API}/admin/roles/{por['administrador']['id']}/modulos", json={"modulos": []}).status_code == 409
     assert org.put(f"{API}/admin/roles/1/modulos", json={"modulos": []}).status_code == 403
+
+
+def test_admin_elimina_usuario():
+    adm = admin()
+    uid = adm.post(f"{API}/admin/usuarios", json=dict(correo="borrar@x.co", nombre="Beto", apellido="Ruiz", rol="administrador")).json()["usuario"]["id"]
+    assert adm.delete(f"{API}/admin/usuarios/1").status_code == 409          # a si mismo no
+    assert adm.delete(f"{API}/admin/usuarios/{uid}").status_code == 200
+    assert adm.delete(f"{API}/admin/usuarios/{uid}").status_code == 404
+    # un organizador sin eventos se borra junto con su perfil
+    oid = adm.post(f"{API}/admin/usuarios", json=dict(correo="borrar2@x.co", nombre="Beto", apellido="Ruiz", rol="organizador",
+                                                      organizacion_nombre="Fund Borrar", nit="820000077")).json()["usuario"]["id"]
+    assert adm.delete(f"{API}/admin/usuarios/{oid}").status_code == 200
+    assert adm.get(f"{API}/admin/usuarios", params={"q": "borrar"}).json() == []
+    assert organizador("org99@x.co", "820000099").delete(f"{API}/admin/usuarios/{uid}").status_code == 403
+
+
+def test_organizador_elimina_colegio():
+    org1, org2, adm = organizador("org30@x.co", "830000001"), organizador("org31@x.co", "830000002"), admin()
+    col, id1 = colegio_de(org1, "rector30@x.co", "930000001")
+    estudiante(col, "2000000001")
+    assert org2.delete(f"{API}/organizador/colegios/{id1}").status_code == 404           # no es suyo
+    assert col.delete(f"{API}/organizador/colegios/{id1}").status_code == 403            # un colegio no elimina
+    eid = publicar(org1, adm)
+    col.post(f"{API}/colegio/eventos/{eid}/inscripcion", json={"estudiantes": [1]})
+    id2 = colegio_de(org1, "rector31@x.co", "930000002")[1]
+    assert org1.delete(f"{API}/organizador/colegios/{id2}").status_code == 204           # sin inscripciones: se borra
+    assert all(c["id"] != id2 for c in org1.get(f"{API}/organizador/colegios").json())
+    if org1.get(f"{API}/organizador/inscripciones").json():                              # con inscripciones: 409
+        assert org1.delete(f"{API}/organizador/colegios/{id1}").status_code == 409
