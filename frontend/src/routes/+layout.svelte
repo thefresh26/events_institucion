@@ -46,13 +46,13 @@
 
 	async function cerrarSesion() {
 		await salir();
-		goto('/login');
+		window.location.assign('/login'); // recarga completa: no queda nada de la sesion anterior
 	}
 </script>
 
 {#if sesion.cargando}
 	<div class="centro mut" role="status"><div class="cargando"></div>Cargando…</div>
-{:else if sesion.usuario}
+{:else if sesion.usuario && !['/login', '/registro'].includes($page.url.pathname)}
 	<div class="app">
 		<aside>
 			<a class="logo-lado" href="/panel" aria-label="Conexión Escolar, inicio"><img src="/logo.png" alt="Conexión Escolar" width="200" height="136" /></a>
