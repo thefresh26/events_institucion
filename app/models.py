@@ -1,7 +1,7 @@
-"""Modelos que reflejan EXACTAMENTE las 18 tablas creadas en Neon (esquema_eventos_neon.sql)."""
+"""Modelos de las 18 tablas de Neon. TODAS llevan estado (borrado logico), creado y actualizado (ver Auditable)."""
 from datetime import datetime
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, String, UniqueConstraint, func
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, String, UniqueConstraint, func, true
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
@@ -9,23 +9,35 @@ from app.db.session import Base
 ahora = dict(server_default=func.now())
 
 
+class Auditable:
+    """Los 3 campos que el taller exige en TODAS las tablas.
+    estado: True = existe, False = eliminado (el registro NO se borra, solo cambia el estado; se maneja desde la API).
+    creado: fecha de creacion, no cambia. actualizado: se refresca en cada UPDATE (ORM + trigger de PostgreSQL)."""
+    estado: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
+    creado: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    actualizado: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
 # ---- Las 4 tablas base del profesor ----
-class Rol(Base):
+class Rol(Auditable, Base):
     __tablename__ = "rol"
     id: Mapped[int] = mapped_column(primary_key=True)
     nombre: Mapped[str] = mapped_column(String(50), unique=True)
     descripcion: Mapped[str | None] = mapped_column(String(255))
-    modulos: Mapped[list["Modulo"]] = relationship(secondary="modulo_por_rol", viewonly=True)
+    modulos: Mapped[list["Modulo"]] = relationship(
+        secondary="modulo_por_rol", viewonly=True,
+        primaryjoin="and_(Rol.id == ModuloPorRol.id_rol, ModuloPorRol.estado.is_(True))",
+        secondaryjoin="and_(Modulo.id == ModuloPorRol.id_modulo, Modulo.estado.is_(True))")
 
 
-class Modulo(Base):
+class Modulo(Auditable, Base):
     __tablename__ = "modulo"
     id: Mapped[int] = mapped_column(primary_key=True)
     nombre: Mapped[str] = mapped_column(String(100), unique=True)
     descripcion: Mapped[str | None] = mapped_column(String(255))
 
 
-class ModuloPorRol(Base):
+class ModuloPorRol(Auditable, Base):
     __tablename__ = "modulo_por_rol"
     __table_args__ = (UniqueConstraint("id_rol", "id_modulo"),)
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -33,7 +45,7 @@ class ModuloPorRol(Base):
     id_modulo: Mapped[int] = mapped_column(ForeignKey("modulo.id"))
 
 
-class Usuario(Base):
+class Usuario(Auditable, Base):
     __tablename__ = "usuario"
     id: Mapped[int] = mapped_column(primary_key=True)
     id_rol: Mapped[int] = mapped_column(ForeignKey("rol.id"))
@@ -42,18 +54,17 @@ class Usuario(Base):
     nombre: Mapped[str] = mapped_column(String(100))
     apellido: Mapped[str] = mapped_column(String(100))
     activo: Mapped[bool] = mapped_column(Boolean, default=True)
-    creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), **ahora)
     rol: Mapped[Rol] = relationship()
 
 
 # ---- Ubicacion ----
-class Departamento(Base):
+class Departamento(Auditable, Base):
     __tablename__ = "departamento"
     id: Mapped[int] = mapped_column(primary_key=True)
     nombre: Mapped[str] = mapped_column(String(100), unique=True)
 
 
-class Ciudad(Base):
+class Ciudad(Auditable, Base):
     __tablename__ = "ciudad"
     __table_args__ = (UniqueConstraint("id_departamento", "nombre"),)
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -63,7 +74,7 @@ class Ciudad(Base):
 
 
 # ---- Actores ----
-class Colegio(Base):
+class Colegio(Auditable, Base):
     __tablename__ = "colegio"
     id: Mapped[int] = mapped_column(primary_key=True)
     id_usuario: Mapped[int] = mapped_column(ForeignKey("usuario.id"), unique=True)
@@ -77,7 +88,7 @@ class Colegio(Base):
     ciudad: Mapped[Ciudad] = relationship()
 
 
-class Organizador(Base):
+class Organizador(Auditable, Base):
     __tablename__ = "organizador"
     id: Mapped[int] = mapped_column(primary_key=True)
     id_usuario: Mapped[int] = mapped_column(ForeignKey("usuario.id"), unique=True)
@@ -89,13 +100,13 @@ class Organizador(Base):
 
 
 # ---- Estudiantes ----
-class Grado(Base):
+class Grado(Auditable, Base):
     __tablename__ = "grado"
     id: Mapped[int] = mapped_column(primary_key=True)
     nombre: Mapped[str] = mapped_column(String(20), unique=True)
 
 
-class Estudiante(Base):
+class Estudiante(Auditable, Base):
     __tablename__ = "estudiante"
     __table_args__ = (UniqueConstraint("id_colegio", "documento"),)
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -104,34 +115,33 @@ class Estudiante(Base):
     nombre: Mapped[str] = mapped_column(String(100))
     apellido: Mapped[str] = mapped_column(String(100))
     documento: Mapped[str] = mapped_column(String(20))
-    activo: Mapped[bool] = mapped_column(Boolean, default=True)
     grado: Mapped[Grado] = relationship()
 
 
-class AutorizacionAcudiente(Base):
+class AutorizacionAcudiente(Auditable, Base):
     __tablename__ = "autorizacion_acudiente"
     id: Mapped[int] = mapped_column(primary_key=True)
-    id_estudiante: Mapped[int] = mapped_column(ForeignKey("estudiante.id"))
+    id_estudiante: Mapped[int] = mapped_column(ForeignKey("estudiante.id"), unique=True)
     nombre_acudiente: Mapped[str] = mapped_column(String(150))
     fecha: Mapped[datetime] = mapped_column(DateTime(timezone=True), **ahora)
     vigente: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
 # ---- Eventos ----
-class CategoriaEvento(Base):
+class CategoriaEvento(Auditable, Base):
     __tablename__ = "categoria_evento"
     id: Mapped[int] = mapped_column(primary_key=True)
     nombre: Mapped[str] = mapped_column(String(100), unique=True)
     descripcion: Mapped[str | None] = mapped_column(String(255))
 
 
-class EstadoEvento(Base):
+class EstadoEvento(Auditable, Base):
     __tablename__ = "estado_evento"
     id: Mapped[int] = mapped_column(primary_key=True)
     nombre: Mapped[str] = mapped_column(String(30), unique=True)
 
 
-class Evento(Base):
+class Evento(Auditable, Base):
     __tablename__ = "evento"
     id: Mapped[int] = mapped_column(primary_key=True)
     id_organizador: Mapped[int] = mapped_column(ForeignKey("organizador.id"))
@@ -147,34 +157,32 @@ class Evento(Base):
     cupo_colegios: Mapped[int] = mapped_column(Integer, CheckConstraint("cupo_colegios > 0"))
     cupo_estudiantes: Mapped[int] = mapped_column(Integer, CheckConstraint("cupo_estudiantes > 0"))
     fecha_aprobacion: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), **ahora)
-    estado: Mapped[EstadoEvento] = relationship()
+    estado_evento: Mapped[EstadoEvento] = relationship()
     categoria: Mapped[CategoriaEvento] = relationship()
     organizador: Mapped[Organizador] = relationship()
 
 
 # ---- Inscripciones ----
-class EstadoInscripcion(Base):
+class EstadoInscripcion(Auditable, Base):
     __tablename__ = "estado_inscripcion"
     id: Mapped[int] = mapped_column(primary_key=True)
     nombre: Mapped[str] = mapped_column(String(30), unique=True)
 
 
-class Inscripcion(Base):
+class Inscripcion(Auditable, Base):
     __tablename__ = "inscripcion"
     __table_args__ = (UniqueConstraint("id_evento", "id_colegio"),)
     id: Mapped[int] = mapped_column(primary_key=True)
     id_evento: Mapped[int] = mapped_column(ForeignKey("evento.id"))
     id_colegio: Mapped[int] = mapped_column(ForeignKey("colegio.id"))
     id_estado: Mapped[int] = mapped_column(ForeignKey("estado_inscripcion.id"))
-    creada_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), **ahora)
-    estado: Mapped[EstadoInscripcion] = relationship()
+    estado_inscripcion: Mapped[EstadoInscripcion] = relationship()
     evento: Mapped[Evento] = relationship()
     colegio: Mapped[Colegio] = relationship()
     estudiantes: Mapped[list["InscripcionEstudiante"]] = relationship()
 
 
-class InscripcionEstudiante(Base):
+class InscripcionEstudiante(Auditable, Base):
     __tablename__ = "inscripcion_estudiante"
     __table_args__ = (UniqueConstraint("id_inscripcion", "id_estudiante"),)
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -185,7 +193,7 @@ class InscripcionEstudiante(Base):
 
 
 # ---- Auditoria ----
-class Auditoria(Base):
+class Auditoria(Auditable, Base):
     __tablename__ = "auditoria"
     id: Mapped[int] = mapped_column(primary_key=True)
     id_usuario: Mapped[int | None] = mapped_column(ForeignKey("usuario.id"))
@@ -193,4 +201,3 @@ class Auditoria(Base):
     tabla: Mapped[str | None] = mapped_column(String(60))
     registro_id: Mapped[int | None] = mapped_column(Integer)
     ip: Mapped[str | None] = mapped_column(String(45))
-    creada_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), **ahora)

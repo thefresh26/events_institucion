@@ -21,7 +21,7 @@ def inscritos(db: Session, id_evento: int, solo_aceptadas: bool = False) -> int:
 
 
 def evento_out(db: Session, e: Evento) -> dict:
-    return {"id": e.id, "nombre": e.nombre, "descripcion": e.descripcion, "lugar": e.lugar, "estado": e.estado.nombre,
+    return {"id": e.id, "nombre": e.nombre, "descripcion": e.descripcion, "lugar": e.lugar, "estado": e.estado_evento.nombre,
             "categoria": e.categoria.nombre, "organizador": e.organizador.nombre, "id_ciudad": e.id_ciudad,
             "fecha_inicio": e.fecha_inicio, "fecha_fin": e.fecha_fin, "cupo_colegios": e.cupo_colegios,
             "cupo_estudiantes": e.cupo_estudiantes, "colegios_inscritos": inscritos(db, e.id)}

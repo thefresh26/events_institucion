@@ -12,7 +12,7 @@ from app.api.v1.comun import csv_seguro, evento_out, id_estado_evento, id_estado
 from app.core.auditoria import registrar
 from app.core.security import hash_password
 from app.db.session import get_db
-from app.models import (AutorizacionAcudiente, Auditoria, CategoriaEvento, Ciudad, Colegio, Estudiante, Evento, Inscripcion, InscripcionEstudiante, Organizador, Rol,
+from app.models import (CategoriaEvento, Ciudad, Colegio, Evento, Inscripcion, InscripcionEstudiante, Organizador, Rol,
                         Usuario)
 from app.schemas import ActivoIn, AsistenciaIn, ColegioNuevo, DecisionInscripcion, EventoIn
 
@@ -52,12 +52,12 @@ def registrar_colegio(datos: ColegioNuevo, request: Request, org: Organizador = 
 @router.get("/colegios")
 def listar_colegios(org: Organizador = Depends(organizador_actual), db: Session = Depends(get_db)):
     # Solo los colegios que ESTE organizador registro (evita ver datos de otros organizadores).
-    return [_colegio_out(c) for c in db.query(Colegio).filter_by(id_organizador=org.id).order_by(Colegio.nombre)]
+    return [_colegio_out(c) for c in db.query(Colegio).filter_by(id_organizador=org.id, estado=True).order_by(Colegio.nombre)]
 
 
 @router.patch("/colegios/{id_colegio}/activo")
 def activar_colegio(id_colegio: int, datos: ActivoIn, org: Organizador = Depends(organizador_actual), db: Session = Depends(get_db)):
-    c = db.query(Colegio).filter_by(id=id_colegio, id_organizador=org.id).first()
+    c = db.query(Colegio).filter_by(id=id_colegio, id_organizador=org.id, estado=True).first()
     if c is None:
         raise HTTPException(404, "Colegio no encontrado")  # 404 y no 403: no revela si existe
     c.usuario.activo = datos.activo
@@ -67,28 +67,19 @@ def activar_colegio(id_colegio: int, datos: ActivoIn, org: Organizador = Depends
 
 @router.delete("/colegios/{id_colegio}", status_code=204)
 def eliminar_colegio(id_colegio: int, request: Request, org: Organizador = Depends(organizador_actual), db: Session = Depends(get_db)):
-    """Borra el colegio y sus estudiantes. Solo si nunca se inscribio a un evento (si no, usar Desactivar: conserva el historial)."""
-    c = db.query(Colegio).filter_by(id=id_colegio, id_organizador=org.id).first()
+    """Baja logica: el colegio queda con estado=False (no se borra la fila) y su usuario ya no puede entrar. Se conserva el historial."""
+    c = db.query(Colegio).filter_by(id=id_colegio, id_organizador=org.id, estado=True).first()
     if c is None:
         raise HTTPException(404, "Colegio no encontrado")
-    if db.query(Inscripcion).filter_by(id_colegio=c.id).first():
-        raise HTTPException(409, "El colegio tiene inscripciones en eventos; desactívalo en lugar de eliminarlo")
-    ids = [i for (i,) in db.query(Estudiante.id).filter_by(id_colegio=c.id)]
-    if ids:
-        db.query(AutorizacionAcudiente).filter(AutorizacionAcudiente.id_estudiante.in_(ids)).delete(synchronize_session=False)
-        db.query(Estudiante).filter(Estudiante.id.in_(ids)).delete(synchronize_session=False)
-    id_usuario = c.id_usuario
-    db.query(Auditoria).filter_by(id_usuario=id_usuario).update({"id_usuario": None})
-    registrar(db, request, org.id_usuario, "eliminar_colegio", "colegio", c.id)
-    db.delete(c)
-    db.flush()
-    db.delete(db.get(Usuario, id_usuario))
+    c.estado = c.usuario.estado = False
+    c.usuario.activo = False
     db.commit()
+    registrar(db, request, org.id_usuario, "eliminar_colegio", "colegio", c.id)
 
 
 # ---------------- Eventos ----------------
 def _mio(db: Session, org: Organizador, id_evento: int) -> Evento:
-    e = db.query(Evento).filter_by(id=id_evento, id_organizador=org.id).first()
+    e = db.query(Evento).filter_by(id=id_evento, id_organizador=org.id, estado=True).first()
     if e is None:
         raise no_encontrado()
     return e
@@ -110,13 +101,13 @@ def crear_evento(datos: EventoIn, org: Organizador = Depends(organizador_actual)
 
 @router.get("/eventos")
 def mis_eventos(org: Organizador = Depends(organizador_actual), db: Session = Depends(get_db)):
-    return [evento_out(db, e) for e in db.query(Evento).filter_by(id_organizador=org.id).order_by(Evento.fecha_inicio.desc()).limit(500)]
+    return [evento_out(db, e) for e in db.query(Evento).filter_by(id_organizador=org.id, estado=True).order_by(Evento.fecha_inicio.desc()).limit(500)]
 
 
 @router.put("/eventos/{id_evento}")
 def editar_evento(id_evento: int, datos: EventoIn, org: Organizador = Depends(organizador_actual), db: Session = Depends(get_db)):
     e = _mio(db, org, id_evento)
-    if e.estado.nombre not in ("borrador", "rechazado"):
+    if e.estado_evento.nombre not in ("borrador", "rechazado"):
         raise HTTPException(409, "Solo se pueden editar eventos en borrador o rechazados")
     _validar_refs(db, datos)
     for k, v in datos.model_dump().items():
@@ -127,10 +118,21 @@ def editar_evento(id_evento: int, datos: EventoIn, org: Organizador = Depends(or
     return evento_out(db, e)
 
 
+@router.delete("/eventos/{id_evento}", status_code=204)
+def eliminar_evento(id_evento: int, request: Request, org: Organizador = Depends(organizador_actual), db: Session = Depends(get_db)):
+    """Baja logica (estado=False). Solo eventos en borrador o rechazados."""
+    e = _mio(db, org, id_evento)
+    if e.estado_evento.nombre not in ("borrador", "rechazado"):
+        raise HTTPException(409, "Solo se pueden eliminar eventos en borrador o rechazados")
+    e.estado = False
+    db.commit()
+    registrar(db, request, org.id_usuario, "eliminar_evento", "evento", e.id)
+
+
 @router.post("/eventos/{id_evento}/enviar")
 def enviar_a_aprobacion(id_evento: int, org: Organizador = Depends(organizador_actual), db: Session = Depends(get_db)):
     e = _mio(db, org, id_evento)
-    if e.estado.nombre != "borrador":
+    if e.estado_evento.nombre != "borrador":
         raise HTTPException(409, "Solo se pueden enviar eventos en borrador")
     e.id_estado = id_estado_evento(db, "pendiente")
     db.commit()
@@ -141,9 +143,9 @@ def enviar_a_aprobacion(id_evento: int, org: Organizador = Depends(organizador_a
 # ---------------- Inscripciones ----------------
 @router.get("/inscripciones")
 def inscripciones(org: Organizador = Depends(organizador_actual), db: Session = Depends(get_db)):
-    q = db.query(Inscripcion).join(Evento).filter(Evento.id_organizador == org.id).order_by(Inscripcion.creada_en.desc())
+    q = db.query(Inscripcion).join(Evento).filter(Evento.id_organizador == org.id).order_by(Inscripcion.creado.desc())
     return [{"id": i.id, "evento": i.evento.nombre, "id_evento": i.id_evento, "colegio": i.colegio.nombre,
-             "estudiantes": len(i.estudiantes), "estado": i.estado.nombre, "creada_en": i.creada_en} for i in q.limit(1000)]
+             "estudiantes": len(i.estudiantes), "estado": i.estado_inscripcion.nombre, "creada_en": i.creado} for i in q.limit(1000)]
 
 
 @router.patch("/inscripciones/{id_inscripcion}")
@@ -152,7 +154,7 @@ def decidir_inscripcion(id_inscripcion: int, datos: DecisionInscripcion, request
     i = db.query(Inscripcion).join(Evento).filter(Inscripcion.id == id_inscripcion, Evento.id_organizador == org.id).first()
     if i is None:
         raise no_encontrado()
-    if i.estado.nombre != "pendiente":
+    if i.estado_inscripcion.nombre != "pendiente":
         raise HTTPException(409, "Esta inscripción ya fue decidida")
     if datos.estado == "aceptada" and inscritos(db, i.id_evento, solo_aceptadas=True) >= i.evento.cupo_colegios:
         raise HTTPException(409, "El evento ya no tiene cupos de colegios")
@@ -168,7 +170,7 @@ def ver_asistencia(id_evento: int, org: Organizador = Depends(organizador_actual
     _mio(db, org, id_evento)
     out = []
     for i in db.query(Inscripcion).filter_by(id_evento=id_evento).all():
-        if i.estado.nombre == "aceptada":
+        if i.estado_inscripcion.nombre == "aceptada":
             out.append({"id_inscripcion": i.id, "colegio": i.colegio.nombre,
                         "estudiantes": [{"id_inscripcion_estudiante": x.id, "nombre": f"{x.estudiante.nombre} {x.estudiante.apellido}",
                                          "grado": x.estudiante.grado.nombre, "asistio": x.asistio} for x in i.estudiantes]})
@@ -203,7 +205,7 @@ def reporte_colegios(id_evento: int, request: Request, org: Organizador = Depend
     e = _mio(db, org, id_evento)
     filas = [["Evento", "Colegio", "NIT", "Estado", "Estudiantes"]]
     for i in db.query(Inscripcion).filter_by(id_evento=e.id).all():
-        filas.append([e.nombre, i.colegio.nombre, i.colegio.nit, i.estado.nombre, len(i.estudiantes)])
+        filas.append([e.nombre, i.colegio.nombre, i.colegio.nit, i.estado_inscripcion.nombre, len(i.estudiantes)])
     registrar(db, request, org.id_usuario, "descargar_reporte_colegios", "evento", e.id)
     return _csv(f"colegios_evento_{e.id}.csv", filas)
 
@@ -213,7 +215,7 @@ def reporte_estudiantes(id_evento: int, request: Request, org: Organizador = Dep
     e = _mio(db, org, id_evento)
     filas = [["Evento", "Colegio", "Estudiante", "Grado", "Asistio"]]
     for i in db.query(Inscripcion).filter_by(id_evento=e.id).all():
-        if i.estado.nombre == "aceptada":
+        if i.estado_inscripcion.nombre == "aceptada":
             for x in i.estudiantes:  # sin documento: dato minimo necesario para el organizador
                 filas.append([e.nombre, i.colegio.nombre, f"{x.estudiante.nombre} {x.estudiante.apellido}", x.estudiante.grado.nombre,
                               "Si" if x.asistio else "No"])

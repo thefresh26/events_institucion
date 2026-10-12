@@ -21,7 +21,7 @@ def _est_out(e: Estudiante) -> dict:
 
 @router.get("/estudiantes")
 def listar(col: Colegio = Depends(colegio_actual), db: Session = Depends(get_db)):
-    q = db.query(Estudiante).filter_by(id_colegio=col.id, activo=True).order_by(Estudiante.apellido, Estudiante.nombre)
+    q = db.query(Estudiante).filter_by(id_colegio=col.id, estado=True).order_by(Estudiante.apellido, Estudiante.nombre)
     return [_est_out(e) for e in q.limit(1000)]
 
 
@@ -45,10 +45,10 @@ def registrar(datos: EstudianteNuevo, col: Colegio = Depends(colegio_actual), db
 @router.delete("/estudiantes/{id_estudiante}", status_code=204)
 def retirar(id_estudiante: int, col: Colegio = Depends(colegio_actual), db: Session = Depends(get_db)):
     # Filtra por id_colegio: un colegio no puede tocar estudiantes de otro (evita IDOR).
-    e = db.query(Estudiante).filter_by(id=id_estudiante, id_colegio=col.id).first()
+    e = db.query(Estudiante).filter_by(id=id_estudiante, id_colegio=col.id, estado=True).first()
     if e is None:
         raise HTTPException(404, "Estudiante no encontrado")
-    e.activo = False  # baja logica: se conserva el historial de eventos
+    e.estado = False  # baja logica: se conserva el historial de eventos
     db.commit()
 
 
@@ -56,15 +56,15 @@ def retirar(id_estudiante: int, col: Colegio = Depends(colegio_actual), db: Sess
 @router.get("/eventos")
 def eventos_disponibles(col: Colegio = Depends(colegio_actual), db: Session = Depends(get_db)):
     """Solo eventos PUBLICADOS del organizador que registro a este colegio."""
-    q = (db.query(Evento).join(EstadoEvento).filter(EstadoEvento.nombre == "publicado", Evento.id_organizador == col.id_organizador)
+    q = (db.query(Evento).join(EstadoEvento).filter(Evento.estado.is_(True), EstadoEvento.nombre == "publicado", Evento.id_organizador == col.id_organizador)
          .order_by(Evento.fecha_inicio))
-    mias = {i.id_evento: i.estado.nombre for i in db.query(Inscripcion).filter_by(id_colegio=col.id)}
+    mias = {i.id_evento: i.estado_inscripcion.nombre for i in db.query(Inscripcion).filter_by(id_colegio=col.id)}
     return [{**evento_out(db, e), "mi_inscripcion": mias.get(e.id)} for e in q.limit(500)]
 
 
 @router.post("/eventos/{id_evento}/inscripcion", status_code=201)
 def inscribirse(id_evento: int, datos: InscripcionIn, col: Colegio = Depends(colegio_actual), db: Session = Depends(get_db)):
-    e = (db.query(Evento).join(EstadoEvento).filter(Evento.id == id_evento, Evento.id_organizador == col.id_organizador,
+    e = (db.query(Evento).join(EstadoEvento).filter(Evento.estado.is_(True), Evento.id == id_evento, Evento.id_organizador == col.id_organizador,
                                                      EstadoEvento.nombre == "publicado").first())
     if e is None:
         raise no_encontrado()
@@ -75,7 +75,7 @@ def inscribirse(id_evento: int, datos: InscripcionIn, col: Colegio = Depends(col
         raise HTTPException(422, "Hay estudiantes repetidos")
     if len(ids) > e.cupo_estudiantes:
         raise HTTPException(422, f"Máximo {e.cupo_estudiantes} estudiantes por colegio")
-    validos = db.query(Estudiante.id).filter(Estudiante.id.in_(ids), Estudiante.id_colegio == col.id, Estudiante.activo.is_(True)).count()
+    validos = db.query(Estudiante.id).filter(Estudiante.id.in_(ids), Estudiante.id_colegio == col.id, Estudiante.estado.is_(True)).count()
     if validos != len(ids):
         raise HTTPException(422, "Algún estudiante no pertenece a tu colegio")
     if db.query(Inscripcion).filter_by(id_evento=e.id, id_colegio=col.id).first():
@@ -93,6 +93,6 @@ def inscribirse(id_evento: int, datos: InscripcionIn, col: Colegio = Depends(col
 
 @router.get("/inscripciones")
 def mis_inscripciones(col: Colegio = Depends(colegio_actual), db: Session = Depends(get_db)):
-    q = db.query(Inscripcion).filter_by(id_colegio=col.id).order_by(Inscripcion.creada_en.desc())
-    return [{"id": i.id, "evento": i.evento.nombre, "fecha_inicio": i.evento.fecha_inicio, "estado": i.estado.nombre,
+    q = db.query(Inscripcion).filter_by(id_colegio=col.id).order_by(Inscripcion.creado.desc())
+    return [{"id": i.id, "evento": i.evento.nombre, "fecha_inicio": i.evento.fecha_inicio, "estado": i.estado_inscripcion.nombre,
              "estudiantes": [f"{x.estudiante.nombre} {x.estudiante.apellido}" for x in i.estudiantes]} for i in q.limit(500)]

@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:5173"
     cookie_secure: bool = True   # cookie solo por HTTPS
     forzar_https: bool = False   # redirige http -> https (true en produccion)
+    docs_habilitada: bool = True  # Swagger en /docs (necesario para demostrar los endpoints)
 
     class Config:
         env_file = ".env"

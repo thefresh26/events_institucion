@@ -1,0 +1,60 @@
+# API auxiliar de Conexión Escolar (Express + MySQL)
+
+PQRS, comunicados y valoraciones de eventos. Valida **los mismos JWT** que la API principal (FastAPI): mismo `SECRET_KEY`, algoritmo HS256,
+claims `sub` (id de usuario) y `rol`.
+
+## Base de datos (MySQL) — `schema.sql`
+
+| Tabla | PK | Únicos | FK |
+|---|---|---|---|
+| `tipo_pqrs` | id | nombre | — |
+| `pqrs` | id | radicado | id_tipo → tipo_pqrs |
+| `comunicado` | id | slug | — |
+| `valoracion_evento` | id | (id_evento, id_usuario) | — |
+
+Todas con `estado` (1 activo / 0 eliminado: el registro no se borra), `creado` y `actualizado` (`ON UPDATE CURRENT_TIMESTAMP`).
+
+## Ejecutar
+
+```
+cd aux_api
+npm install
+copy .env.example .env     # completa DB_* y SECRET_KEY (igual a la API principal)
+npm run init-db            # crea las tablas
+npm start                  # http://localhost:4000/docs
+```
+
+## Endpoints (prefijo `/api/aux`)
+
+| Método | Ruta | Quién |
+|---|---|---|
+| GET | `/health` (sin prefijo) | público |
+| GET/POST | `/tipos-pqrs` | autenticado / administrador |
+| PUT/DELETE | `/tipos-pqrs/{id}` | administrador |
+| PATCH | `/tipos-pqrs/{id}/estado` | administrador |
+| POST/GET | `/pqrs` | autenticado (cada uno ve las suyas; el admin todas) |
+| GET | `/pqrs/{id}` | dueño o administrador |
+| PATCH | `/pqrs/{id}/responder` | administrador |
+| DELETE | `/pqrs/{id}` | administrador |
+| GET/POST | `/comunicados` | autenticado (por rol) / administrador |
+| PUT/DELETE | `/comunicados/{id}` | administrador |
+| PATCH | `/comunicados/{id}/estado` | administrador |
+| POST | `/valoraciones` | colegio |
+| GET | `/valoraciones/evento/{id}` | autenticado |
+| DELETE | `/valoraciones/{id}` | dueño o administrador |
+
+## Usarla con el token de la API principal
+
+1. `POST {API_PRINCIPAL}/api/v1/auth/login` → copiar `access_token`.
+2. En `/docs` de esta API → **Authorize** → pegar el token.
+
+## Despliegue (Render + MySQL en la nube)
+
+1. MySQL gratuito: **Aiven for MySQL** (`DB_SSL=insecure`) o **TiDB Cloud Serverless** (`DB_SSL=true`). Crea la base y ejecuta `npm run init-db` (o pega `schema.sql`).
+2. Render → **New Web Service** → este repositorio → **Root Directory: `aux_api`** · Build `npm install` · Start `npm start`.
+3. Variables: `DB_HOST DB_PORT DB_USER DB_PASSWORD DB_NAME DB_SSL`, `SECRET_KEY` (igual a la API principal), `CORS_ORIGINS`.
+4. Probar: `https://<servicio>.onrender.com/health` debe responder `{"status":"ok","mysql":"conectado"}`.
+
+## Pruebas
+
+`npm test` (necesita un MySQL con la base creada y las variables `DB_*`).

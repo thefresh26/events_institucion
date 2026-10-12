@@ -15,6 +15,9 @@ def asegurar_modulos_admin(db: Session) -> None:
         m = db.query(Modulo).filter_by(nombre=nombre).first() or Modulo(nombre=nombre, descripcion=descripcion)
         db.add(m)
         db.flush()
-        if not db.query(ModuloPorRol).filter_by(id_rol=rol.id, id_modulo=m.id).first():
+        fila = db.query(ModuloPorRol).filter_by(id_rol=rol.id, id_modulo=m.id).first()
+        if fila is None:
             db.add(ModuloPorRol(id_rol=rol.id, id_modulo=m.id))
+        elif not fila.estado:
+            fila.estado = True
     db.commit()

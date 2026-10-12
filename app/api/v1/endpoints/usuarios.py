@@ -11,8 +11,8 @@ from app.api.v1.comun import no_encontrado
 from app.core.auditoria import registrar
 from app.core.security import hash_password
 from app.db.session import get_db
-from app.models import Auditoria, Colegio, Evento, Modulo, ModuloPorRol, Organizador, Rol, Usuario
-from app.schemas import ModulosIn, UsuarioEdita, UsuarioNuevo
+from app.models import Colegio, Modulo, ModuloPorRol, Organizador, Rol, Usuario
+from app.schemas import EstadoIn, ModulosIn, UsuarioEdita, UsuarioNuevo
 
 router = APIRouter(prefix="/admin", tags=["admin-usuarios"])
 Admin = Depends(requerir_rol("administrador"))
@@ -20,13 +20,20 @@ Admin = Depends(requerir_rol("administrador"))
 
 def _out(u: Usuario, organizacion: str | None, colegio: str | None) -> dict:
     return {"id": u.id, "correo": u.correo, "nombre": u.nombre, "apellido": u.apellido, "rol": u.rol.nombre,
-            "activo": u.activo, "creado_en": u.creado_en, "perfil": organizacion or colegio}
+            "activo": u.activo, "creado_en": u.creado, "perfil": organizacion or colegio}
+
+
+def _viva(db: Session, id_usuario: int) -> Usuario:
+    u = db.get(Usuario, id_usuario)
+    if u is None or not u.estado:
+        raise no_encontrado()
+    return u
 
 
 def _una(db: Session, id_usuario: int) -> dict:
     fila = (db.query(Usuario, Organizador.nombre, Colegio.nombre)
             .outerjoin(Organizador, Organizador.id_usuario == Usuario.id).outerjoin(Colegio, Colegio.id_usuario == Usuario.id)
-            .options(joinedload(Usuario.rol)).filter(Usuario.id == id_usuario).first())
+            .options(joinedload(Usuario.rol)).filter(Usuario.id == id_usuario, Usuario.estado.is_(True)).first())
     if fila is None:
         raise no_encontrado()
     return _out(*fila)
@@ -36,7 +43,7 @@ def _una(db: Session, id_usuario: int) -> dict:
 def listar(q: str | None = None, rol: str | None = None, estado: str | None = None, _: Usuario = Admin, db: Session = Depends(get_db)):
     consulta = (db.query(Usuario, Organizador.nombre, Colegio.nombre)
                 .outerjoin(Organizador, Organizador.id_usuario == Usuario.id).outerjoin(Colegio, Colegio.id_usuario == Usuario.id)
-                .options(joinedload(Usuario.rol)))
+                .options(joinedload(Usuario.rol)).filter(Usuario.estado.is_(True)))
     if q:
         patron = f"%{q.strip()[:60]}%"
         consulta = consulta.filter(or_(Usuario.correo.ilike(patron), Usuario.nombre.ilike(patron), Usuario.apellido.ilike(patron)))
@@ -44,7 +51,7 @@ def listar(q: str | None = None, rol: str | None = None, estado: str | None = No
         consulta = consulta.join(Rol, Rol.id == Usuario.id_rol).filter(Rol.nombre == rol)
     if estado in ("activo", "inactivo"):
         consulta = consulta.filter(Usuario.activo.is_(estado == "activo"))
-    return [_out(*f) for f in consulta.order_by(Usuario.creado_en.desc(), Usuario.id.desc()).limit(500)]
+    return [_out(*f) for f in consulta.order_by(Usuario.creado.desc(), Usuario.id.desc()).limit(500)]
 
 
 @router.post("/usuarios", status_code=201)
@@ -71,7 +78,7 @@ def crear(datos: UsuarioNuevo, request: Request, admin: Usuario = Admin, db: Ses
 
 @router.patch("/usuarios/{id_usuario}")
 def editar(id_usuario: int, datos: UsuarioEdita, request: Request, admin: Usuario = Admin, db: Session = Depends(get_db)):
-    u = db.get(Usuario, id_usuario) or (_ for _ in ()).throw(no_encontrado())
+    u = _viva(db, id_usuario)
     if u.id == admin.id and ((datos.rol and datos.rol != u.rol.nombre) or datos.activo is False):
         # Siempre queda al menos un administrador activo: el que hace el cambio.
         raise HTTPException(409, "No puedes cambiar tu propio rol ni desactivar tu propia cuenta")
@@ -91,7 +98,7 @@ def editar(id_usuario: int, datos: UsuarioEdita, request: Request, admin: Usuari
 
 @router.post("/usuarios/{id_usuario}/restablecer")
 def restablecer(id_usuario: int, request: Request, admin: Usuario = Admin, db: Session = Depends(get_db)):
-    u = db.get(Usuario, id_usuario) or (_ for _ in ()).throw(no_encontrado())
+    u = _viva(db, id_usuario)
     if u.id == admin.id:
         raise HTTPException(409, "Cambia tu propia contraseña desde Mi cuenta")
     temporal = secrets.token_urlsafe(9)
@@ -103,35 +110,44 @@ def restablecer(id_usuario: int, request: Request, admin: Usuario = Admin, db: S
 
 @router.delete("/usuarios/{id_usuario}")
 def eliminar(id_usuario: int, request: Request, admin: Usuario = Admin, db: Session = Depends(get_db)):
-    """Elimina el usuario y su perfil. Si ya tiene eventos, estudiantes, etc., no se borra: se desactiva."""
-    u = db.get(Usuario, id_usuario) or (_ for _ in ()).throw(no_encontrado())
+    """Baja logica: estado=False. La fila (y su historial) se conserva; el usuario ya no aparece ni puede entrar."""
+    u = _viva(db, id_usuario)
     if u.id == admin.id:
         raise HTTPException(409, "No puedes eliminar tu propia cuenta")
-    try:
-        # El historial se conserva, solo se desvincula del usuario.
-        db.query(Auditoria).filter(Auditoria.id_usuario == u.id).update({"id_usuario": None})
-        db.query(Evento).filter(Evento.id_aprobador == u.id).update({"id_aprobador": None})
-        db.query(Organizador).filter_by(id_usuario=u.id).delete()
-        db.query(Colegio).filter_by(id_usuario=u.id).delete()
-        db.delete(u)
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(409, "Este usuario ya tiene información asociada (eventos, inscripciones…). Mejor desactívalo")
+    u.estado, u.activo = False, False
+    for perfil in (Organizador, Colegio):
+        for p in db.query(perfil).filter_by(id_usuario=u.id):
+            p.estado = False
+    db.commit()
     registrar(db, request, admin.id, "eliminar_usuario", "usuario", id_usuario)
     return {"ok": True}
+
+
+@router.patch("/usuarios/{id_usuario}/estado")
+def cambiar_estado(id_usuario: int, datos: EstadoIn, request: Request, admin: Usuario = Admin, db: Session = Depends(get_db)):
+    """Manipula el campo estado: False = eliminar, True = restaurar un usuario eliminado."""
+    u = db.get(Usuario, id_usuario) or (_ for _ in ()).throw(no_encontrado())
+    if u.id == admin.id and not datos.estado:
+        raise HTTPException(409, "No puedes eliminar tu propia cuenta")
+    u.estado = datos.estado
+    for perfil in (Organizador, Colegio):
+        for p in db.query(perfil).filter_by(id_usuario=u.id):
+            p.estado = datos.estado
+    db.commit()
+    registrar(db, request, admin.id, "estado_usuario", "usuario", u.id)
+    return {"id": u.id, "estado": u.estado}
 
 
 @router.get("/roles")
 def roles(_: Usuario = Admin, db: Session = Depends(get_db)):
     usuarios = dict(db.query(Usuario.id_rol, func.count(Usuario.id)).group_by(Usuario.id_rol).all())
     asignados: dict[int, list[int]] = {}
-    for id_rol, id_modulo in db.query(ModuloPorRol.id_rol, ModuloPorRol.id_modulo):
+    for id_rol, id_modulo in db.query(ModuloPorRol.id_rol, ModuloPorRol.id_modulo).filter(ModuloPorRol.estado.is_(True)):
         asignados.setdefault(id_rol, []).append(id_modulo)
     return {"roles": [{"id": r.id, "nombre": r.nombre, "descripcion": r.descripcion, "usuarios": usuarios.get(r.id, 0),
                        "modulos": sorted(asignados.get(r.id, [])), "bloqueado": r.nombre == "administrador"}
-                      for r in db.query(Rol).order_by(Rol.id)],
-            "modulos": [{"id": m.id, "nombre": m.nombre, "descripcion": m.descripcion} for m in db.query(Modulo).order_by(Modulo.id)]}
+                      for r in db.query(Rol).filter(Rol.estado.is_(True)).order_by(Rol.id)],
+            "modulos": [{"id": m.id, "nombre": m.nombre, "descripcion": m.descripcion} for m in db.query(Modulo).filter(Modulo.estado.is_(True)).order_by(Modulo.id)]}
 
 
 @router.put("/roles/{id_rol}/modulos")
@@ -142,8 +158,11 @@ def asignar_modulos(id_rol: int, datos: ModulosIn, request: Request, admin: Usua
     ids = set(datos.modulos)
     if db.query(func.count(Modulo.id)).filter(Modulo.id.in_(ids)).scalar() != len(ids):
         raise HTTPException(422, "Algún módulo no existe")
-    db.query(ModuloPorRol).filter(ModuloPorRol.id_rol == rol.id).delete()
-    db.add_all(ModuloPorRol(id_rol=rol.id, id_modulo=i) for i in ids)
+    # Baja logica de la tabla intermedia: se apagan las filas que sobran y se reactivan o crean las nuevas.
+    filas = {f.id_modulo: f for f in db.query(ModuloPorRol).filter(ModuloPorRol.id_rol == rol.id)}
+    for id_modulo, f in filas.items():
+        f.estado = id_modulo in ids
+    db.add_all(ModuloPorRol(id_rol=rol.id, id_modulo=i) for i in ids if i not in filas)
     db.commit()
     registrar(db, request, admin.id, "asignar_modulos", "rol", rol.id)
     return {"id": rol.id, "modulos": sorted(ids)}

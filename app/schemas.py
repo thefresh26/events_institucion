@@ -89,6 +89,10 @@ class ActivoIn(_Base):
     activo: bool
 
 
+class EstadoIn(_Base):
+    estado: bool
+
+
 class EventoIn(_Base):
     nombre: str = Field(min_length=3, max_length=150)
     descripcion: str | None = Field(default=None, max_length=500)

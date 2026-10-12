@@ -19,8 +19,8 @@ Admin = Depends(requerir_rol("administrador"))
 def resumen(_: Usuario = Admin, db: Session = Depends(get_db)):
     por_estado = dict(db.query(EstadoEvento.nombre, func.count(Evento.id)).outerjoin(Evento, Evento.id_estado == EstadoEvento.id)
                       .group_by(EstadoEvento.nombre).all())
-    return {"eventos_por_estado": por_estado, "colegios": db.query(func.count(Colegio.id)).scalar(),
-            "organizadores": db.query(func.count(Organizador.id)).scalar(),
+    return {"eventos_por_estado": por_estado, "colegios": db.query(func.count(Colegio.id)).filter(Colegio.estado.is_(True)).scalar(),
+            "organizadores": db.query(func.count(Organizador.id)).filter(Organizador.estado.is_(True)).scalar(),
             "organizadores_pendientes": db.query(func.count(Organizador.id)).join(Usuario).filter(Usuario.activo.is_(False)).scalar(),
             "inscripciones": db.query(func.count(Inscripcion.id)).scalar()}
 
@@ -28,7 +28,7 @@ def resumen(_: Usuario = Admin, db: Session = Depends(get_db)):
 @router.get("/organizadores")
 def organizadores(_: Usuario = Admin, db: Session = Depends(get_db)):
     return [{"id": o.id, "nombre": o.nombre, "nit": o.nit, "correo": o.usuario.correo, "telefono": o.telefono,
-             "activo": o.usuario.activo} for o in db.query(Organizador).order_by(Organizador.nombre)]
+             "activo": o.usuario.activo} for o in db.query(Organizador).filter(Organizador.estado.is_(True)).order_by(Organizador.nombre)]
 
 
 @router.patch("/organizadores/{id_organizador}/activo")
@@ -43,12 +43,12 @@ def activar_organizador(id_organizador: int, datos: ActivoIn, request: Request, 
 @router.get("/colegios")
 def colegios(_: Usuario = Admin, db: Session = Depends(get_db)):
     return [{"id": c.id, "nombre": c.nombre, "nit": c.nit, "ciudad": c.ciudad.nombre, "organizador": db.get(Organizador, c.id_organizador).nombre,
-             "activo": c.usuario.activo} for c in db.query(Colegio).order_by(Colegio.nombre)]
+             "activo": c.usuario.activo} for c in db.query(Colegio).filter(Colegio.estado.is_(True)).order_by(Colegio.nombre)]
 
 
 @router.get("/eventos")
 def eventos(estado: str | None = None, _: Usuario = Admin, db: Session = Depends(get_db)):
-    q = db.query(Evento).order_by(Evento.fecha_inicio)
+    q = db.query(Evento).filter(Evento.estado.is_(True)).order_by(Evento.fecha_inicio)
     if estado:
         q = q.join(EstadoEvento).filter(EstadoEvento.nombre == estado)
     return [evento_out(db, e) for e in q.limit(500)]
@@ -57,7 +57,7 @@ def eventos(estado: str | None = None, _: Usuario = Admin, db: Session = Depends
 @router.patch("/eventos/{id_evento}/decision")
 def decidir(id_evento: int, datos: DecisionEvento, request: Request, admin: Usuario = Admin, db: Session = Depends(get_db)):
     e = db.get(Evento, id_evento) or (_ for _ in ()).throw(no_encontrado())
-    if e.estado.nombre != "pendiente":
+    if e.estado_evento.nombre != "pendiente":
         raise HTTPException(409, "Solo se pueden decidir eventos pendientes")
     e.id_estado = id_estado_evento(db, datos.decision)
     e.id_aprobador, e.fecha_aprobacion = admin.id, datetime.now(timezone.utc)
@@ -70,7 +70,7 @@ def decidir(id_evento: int, datos: DecisionEvento, request: Request, admin: Usua
 @router.post("/eventos/{id_evento}/cerrar")
 def cerrar(id_evento: int, request: Request, admin: Usuario = Admin, db: Session = Depends(get_db)):
     e = db.get(Evento, id_evento) or (_ for _ in ()).throw(no_encontrado())
-    if e.estado.nombre != "publicado":
+    if e.estado_evento.nombre != "publicado":
         raise HTTPException(409, "Solo se pueden cerrar eventos publicados")
     e.id_estado = id_estado_evento(db, "cerrado")
     db.commit()

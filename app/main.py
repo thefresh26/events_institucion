@@ -26,15 +26,18 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="Eventos para colegios - API", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
+DOCS = settings.docs_habilitada
+app = FastAPI(title="Conexión Escolar - API principal (FastAPI + PostgreSQL)", version="1.0",
+              docs_url="/docs" if DOCS else None, redoc_url="/redoc" if DOCS else None,
+              openapi_url="/openapi.json" if DOCS else None, lifespan=lifespan)
 
 app.add_middleware(GZipMiddleware, minimum_size=500)
 app.add_middleware(CORSMiddleware, allow_origins=settings.origenes_permitidos, allow_credentials=True,
-                   allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"], allow_headers=["Content-Type"])
+                   allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"], allow_headers=["Content-Type", "Authorization"])
 
 CABECERAS = {
-    "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
-                               "img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+    "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+                               "img-src 'self' data: https://fastapi.tiangolo.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
     "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "strict-origin-when-cross-origin",

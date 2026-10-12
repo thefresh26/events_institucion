@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 from app.db.session import Base, SessionLocal, engine  # noqa: E402
 from app.main import app  # noqa: E402
 from app.core.security import hash_password  # noqa: E402
-from app.models import (CategoriaEvento, Ciudad, Departamento, EstadoEvento, EstadoInscripcion, Grado, Modulo,  # noqa: E402
+from app.models import (Colegio, CategoriaEvento, Ciudad, Departamento, EstadoEvento, EstadoInscripcion, Grado, Modulo,  # noqa: E402
                         ModuloPorRol, Rol, Usuario)
 
 Base.metadata.create_all(engine)
@@ -285,7 +285,68 @@ def test_organizador_elimina_colegio():
     eid = publicar(org1, adm)
     col.post(f"{API}/colegio/eventos/{eid}/inscripcion", json={"estudiantes": [1]})
     id2 = colegio_de(org1, "rector31@x.co", "930000002")[1]
-    assert org1.delete(f"{API}/organizador/colegios/{id2}").status_code == 204           # sin inscripciones: se borra
+    assert org1.delete(f"{API}/organizador/colegios/{id2}").status_code == 204           # baja logica
     assert all(c["id"] != id2 for c in org1.get(f"{API}/organizador/colegios").json())
-    if org1.get(f"{API}/organizador/inscripciones").json():                              # con inscripciones: 409
-        assert org1.delete(f"{API}/organizador/colegios/{id1}").status_code == 409
+    with SessionLocal() as db:                                                           # la fila sigue en la tabla, con estado=False
+        assert db.get(Colegio, id2).estado is False
+    assert org1.delete(f"{API}/organizador/colegios/{id2}").status_code == 404           # ya eliminado
+    assert org1.delete(f"{API}/organizador/colegios/{id1}").status_code == 204           # con inscripciones tambien: se conserva el historial
+
+
+# ---------------- Taller: estado / creado / actualizado, JWT Bearer, CRUD de catalogos ----------------
+def test_todas_las_tablas_tienen_estado_creado_actualizado():
+    for t in Base.metadata.tables.values():
+        for c in ("estado", "creado", "actualizado"):
+            assert c in t.c, f"{t.name} no tiene {c}"
+        assert t.c.estado.nullable is False and t.c.creado.nullable is False and t.c.actualizado.nullable is False
+    assert len(Base.metadata.tables) >= 12
+
+
+def test_creado_actualizado_y_estado_por_defecto():
+    import time
+    adm = admin()
+    r = adm.post(f"{API}/admin/catalogos/grados", json={"nombre": "Aud-1"})
+    assert r.status_code == 201 and r.json()["estado"] is True and r.json()["creado"] and r.json()["actualizado"]
+    antes = r.json()["actualizado"]
+    time.sleep(1.1)
+    r2 = adm.put(f"{API}/admin/catalogos/grados/{r.json()['id']}", json={"nombre": "Aud-2"})
+    assert r2.json()["creado"] == r.json()["creado"] and r2.json()["actualizado"] > antes     # creado fijo, actualizado cambia
+
+
+def test_crud_catalogo_con_baja_logica():
+    adm = admin()
+    gid = adm.post(f"{API}/admin/catalogos/grados", json={"nombre": "Soft-1"}).json()["id"]
+    assert adm.post(f"{API}/admin/catalogos/grados", json={"nombre": "Soft-1"}).status_code == 409   # campo unico
+    assert adm.post(f"{API}/admin/catalogos/grados", json={}).status_code == 422
+    assert adm.post(f"{API}/admin/catalogos/grados", json={"nombre": "x", "estado": False}).status_code == 422  # estado no se envia al crear
+    assert adm.post(f"{API}/admin/catalogos/nada", json={"nombre": "x"}).status_code == 404
+    assert any(g["id"] == gid for g in adm.get(f"{API}/catalogos/grados").json())
+    assert adm.delete(f"{API}/admin/catalogos/grados/{gid}").json()["estado"] is False                 # baja logica
+    assert all(g["id"] != gid for g in adm.get(f"{API}/catalogos/grados").json())                       # ya no se ofrece
+    assert any(g["id"] == gid for g in adm.get(f"{API}/admin/catalogos/grados", params={"todos": True}).json())  # pero la fila existe
+    assert adm.patch(f"{API}/admin/catalogos/grados/{gid}/estado", json={"estado": True}).json()["estado"] is True  # restaurar
+    assert adm.delete(f"{API}/admin/catalogos/roles/1").status_code == 409                              # rol administrador protegido
+    assert organizador("org60@x.co", "860000001").get(f"{API}/admin/catalogos/grados").status_code == 403
+
+
+def test_jwt_bearer_y_validacion():
+    c = TestClient(app)
+    r = c.post(f"{API}/auth/login", json={"correo": "admin@x.co", "contrasena": "Admin1234"})
+    token = r.json()["access_token"]
+    assert r.json()["token_type"] == "bearer" and token.count(".") == 2                      # JWT: cabecera.carga.firma
+    limpio = TestClient(app)                                                                  # sin cookie: solo la cabecera
+    assert limpio.get(f"{API}/auth/me").status_code == 401                                    # sin token
+    assert limpio.get(f"{API}/auth/me", headers={"Authorization": f"Bearer {token}"}).json()["rol"] == "administrador"
+    assert limpio.get(f"{API}/auth/me", headers={"Authorization": f"Bearer {token[:-2]}xx"}).status_code == 401   # firma alterada
+    import jwt as pyjwt
+    from datetime import datetime, timedelta, timezone
+    vencido = pyjwt.encode({"sub": "1", "exp": datetime.now(timezone.utc) - timedelta(minutes=1)}, "test-secret", algorithm="HS256")
+    assert limpio.get(f"{API}/auth/me", headers={"Authorization": f"Bearer {vencido}"}).status_code == 401       # expirado
+    ajeno = pyjwt.encode({"sub": "1"}, "otra-clave", algorithm="HS256")
+    assert limpio.get(f"{API}/auth/me", headers={"Authorization": f"Bearer {ajeno}"}).status_code == 401         # firmado con otra clave
+    assert pyjwt.decode(token, "test-secret", algorithms=["HS256"])["rol"] == "administrador"
+
+
+def test_swagger_publicado():
+    c = TestClient(app)
+    assert c.get("/docs").status_code == 200 and "/api/v1/auth/login" in c.get("/openapi.json").text

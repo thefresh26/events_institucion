@@ -1,16 +1,20 @@
 from fastapi import Depends, HTTPException, Request, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.security import decode_access_token
 from app.db.session import get_db
 from app.models import Rol, Usuario
 
+# auto_error=False: el token puede llegar por cabecera "Authorization: Bearer <jwt>" (Swagger, Postman, otras APIs) o por cookie (el frontend).
+bearer = HTTPBearer(auto_error=False, description="Pega el access_token que devuelve POST /auth/login")
 NO_AUTH = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="No se pudo validar la sesión")
 
 
-def get_current_usuario(request: Request, db: Session = Depends(get_db)) -> Usuario:
-    """La sesion viaja en una cookie HttpOnly (el JavaScript de la pagina no puede leerla)."""
-    token = request.cookies.get("token")
+def get_current_usuario(request: Request, cred: HTTPAuthorizationCredentials | None = Depends(bearer),
+                        db: Session = Depends(get_db)) -> Usuario:
+    """Valida el JWT (firma y expiracion). Viaja en la cabecera Bearer o en una cookie HttpOnly."""
+    token = cred.credentials if cred else request.cookies.get("token")
     if not token:
         raise NO_AUTH
     try:
@@ -19,7 +23,7 @@ def get_current_usuario(request: Request, db: Session = Depends(get_db)) -> Usua
         raise NO_AUTH
     # Una sola consulta trae usuario + rol + modulos (antes eran 3 viajes a Neon).
     usuario = db.query(Usuario).options(joinedload(Usuario.rol).joinedload(Rol.modulos)).filter(Usuario.id == id_usuario).first()
-    if usuario is None or not usuario.activo:
+    if usuario is None or not usuario.activo or not usuario.estado:
         raise NO_AUTH
     return usuario
 

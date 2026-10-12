@@ -55,7 +55,7 @@ def login(datos: LoginIn, response: Response, db: Session = Depends(get_db)):
     espera = rate_limit.segundos_de_bloqueo(correo)
     if espera:
         raise HTTPException(429, f"Demasiados intentos. Intenta de nuevo en {espera // 60 + 1} minutos")
-    u = db.query(Usuario).filter(Usuario.correo == correo).first()
+    u = db.query(Usuario).filter(Usuario.correo == correo, Usuario.estado.is_(True)).first()
     ok = verify_password(datos.contrasena, u.contrasena if u else _FALSO)
     if not u or not ok:
         rate_limit.registrar_fallo(correo)
@@ -63,10 +63,11 @@ def login(datos: LoginIn, response: Response, db: Session = Depends(get_db)):
     if not u.activo:
         raise HTTPException(403, "Tu cuenta está pendiente de aprobación o fue desactivada")
     rate_limit.limpiar(correo)
-    response.set_cookie("token", create_access_token({"sub": str(u.id)}), httponly=True,
+    token = create_access_token({"sub": str(u.id), "rol": u.rol.nombre})  # JWT: sub = id de usuario, rol = para las APIs auxiliares
+    response.set_cookie("token", token, httponly=True,
                         secure=settings.cookie_secure, samesite="lax",
                         max_age=settings.access_token_expire_minutes * 60, path="/")
-    return _perfil(db, u)
+    return {**_perfil(db, u), "access_token": token, "token_type": "bearer"}
 
 
 @router.post("/logout", status_code=204)
