@@ -1,8 +1,7 @@
 import re
-from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 TEL = re.compile(r"^[0-9+\s\-]{7,20}$")
 NIT = re.compile(r"^[0-9\-]{5,20}$")
@@ -75,28 +74,6 @@ class ActivoIn(_Base):
 
 class EstadoIn(_Base):
     estado: bool
-
-
-class EventoIn(_Base):
-    nombre: str = Field(min_length=3, max_length=150)
-    descripcion: str | None = Field(default=None, max_length=500)
-    lugar: str = Field(min_length=3, max_length=150)
-    fecha_inicio: datetime
-    fecha_fin: datetime | None = None
-    id_categoria: int = Field(gt=0)
-    id_ciudad: int = Field(gt=0)
-    cupo_colegios: int = Field(gt=0, le=1000)
-    cupo_estudiantes: int = Field(gt=0, le=500)  # por colegio
-
-    @model_validator(mode="after")
-    def fechas_ok(self):
-        if self.fecha_fin and self.fecha_fin < self.fecha_inicio:
-            raise ValueError("La fecha de fin no puede ser anterior a la de inicio")
-        return self
-
-
-class DecisionEvento(_Base):
-    decision: Literal["publicado", "rechazado"]
 
 
 class DecisionInscripcion(_Base):

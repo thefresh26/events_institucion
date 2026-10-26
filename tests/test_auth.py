@@ -142,6 +142,29 @@ def estudiante(col, doc):
     return r.json()["id"]
 
 
+def test_eventos_editar_eliminar_cerrar():
+    org, adm = organizador("org70@x.co", "870000001"), admin()
+    col, _ = colegio_de(org, "rector70@x.co", "970000001")
+    eid = org.post(f"{API}/organizador/eventos", json=evento_json()).json()["id"]
+    r = org.put(f"{API}/organizador/eventos/{eid}", json=evento_json(nombre="Feria editada"))
+    assert r.status_code == 200 and r.json()["nombre"] == "Feria editada" and r.json()["estado"] == "borrador"
+    assert org.put(f"{API}/organizador/eventos/{eid}", json=evento_json(id_ciudad=999)).status_code == 422
+    assert org.delete(f"{API}/organizador/eventos/{eid}").status_code == 204                  # borrado logico
+    assert all(e["id"] != eid for e in org.get(f"{API}/organizador/eventos").json())
+    eid = publicar(org, adm)
+    assert org.delete(f"{API}/organizador/eventos/{eid}").status_code == 409                  # publicado: no se borra
+    assert any(e["id"] == eid for e in adm.get(f"{API}/admin/eventos", params={"estado": "publicado"}).json())
+    e1 = estudiante(col, "1700000001")
+    col.post(f"{API}/colegio/eventos/{eid}/inscripcion", json={"estudiantes": [e1]})
+    ev = col.get(f"{API}/colegio/eventos").json()[0]
+    assert ev["mi_inscripcion"] == "pendiente" and ev["colegios_inscritos"] == 1
+    assert adm.post(f"{API}/admin/eventos/{eid}/cerrar").json()["estado"] == "cerrado"
+    assert adm.post(f"{API}/admin/eventos/{eid}/cerrar").status_code == 409
+    with SessionLocal() as db:
+        acciones = db.execute(text("SELECT accion FROM auditoria WHERE tabla = 'evento' AND registro_id = :i ORDER BY id"), {"i": eid}).scalars().all()
+    assert acciones == ["crear_evento", "enviar_evento", "evento_publicado", "evento_cerrado"]
+
+
 def test_flujo_de_evento_completo():
     org, adm = organizador("org10@x.co", "810000001"), admin()
     col, _ = colegio_de(org, "rector10@x.co", "910000001")

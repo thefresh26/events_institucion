@@ -8,13 +8,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import organizador_actual
-from app.api.v1.comun import csv_seguro, evento_out, id_estado_evento, id_estado_inscripcion, inscritos, no_encontrado
+from app.api.v1.comun import csv_seguro, id_estado_inscripcion, inscritos, no_encontrado
 from app.core.auditoria import registrar
 from app.core.security import hash_password
 from app.db.session import get_db
-from app.models import (CategoriaEvento, Ciudad, Colegio, Evento, Inscripcion, InscripcionEstudiante, Organizador, Rol,
+from app.models import (Ciudad, Colegio, Evento, Inscripcion, InscripcionEstudiante, Organizador, Rol,
                         Usuario)
-from app.schemas import ActivoIn, AsistenciaIn, ColegioNuevo, DecisionInscripcion, EventoIn
+from app.schemas import ActivoIn, AsistenciaIn, ColegioNuevo, DecisionInscripcion
 
 router = APIRouter(prefix="/organizador", tags=["organizador"])
 
@@ -83,61 +83,6 @@ def _mio(db: Session, org: Organizador, id_evento: int) -> Evento:
     if e is None:
         raise no_encontrado()
     return e
-
-
-def _validar_refs(db: Session, d: EventoIn):
-    if db.get(CategoriaEvento, d.id_categoria) is None or db.get(Ciudad, d.id_ciudad) is None:
-        raise HTTPException(422, "Categoría o ciudad inválida")
-
-
-@router.post("/eventos", status_code=201)
-def crear_evento(datos: EventoIn, org: Organizador = Depends(organizador_actual), db: Session = Depends(get_db)):
-    _validar_refs(db, datos)
-    e = Evento(id_organizador=org.id, id_estado=id_estado_evento(db, "borrador"), **datos.model_dump())
-    db.add(e)
-    db.commit()
-    return evento_out(db, e)
-
-
-@router.get("/eventos")
-def mis_eventos(org: Organizador = Depends(organizador_actual), db: Session = Depends(get_db)):
-    return [evento_out(db, e) for e in db.query(Evento).filter_by(id_organizador=org.id, estado=True).order_by(Evento.fecha_inicio.desc()).limit(500)]
-
-
-@router.put("/eventos/{id_evento}")
-def editar_evento(id_evento: int, datos: EventoIn, org: Organizador = Depends(organizador_actual), db: Session = Depends(get_db)):
-    e = _mio(db, org, id_evento)
-    if e.estado_evento.nombre not in ("borrador", "rechazado"):
-        raise HTTPException(409, "Solo se pueden editar eventos en borrador o rechazados")
-    _validar_refs(db, datos)
-    for k, v in datos.model_dump().items():
-        setattr(e, k, v)
-    e.id_estado = id_estado_evento(db, "borrador")  # editado: vuelve a borrador
-    db.commit()
-    db.refresh(e)
-    return evento_out(db, e)
-
-
-@router.delete("/eventos/{id_evento}", status_code=204)
-def eliminar_evento(id_evento: int, request: Request, org: Organizador = Depends(organizador_actual), db: Session = Depends(get_db)):
-    """Baja logica (estado=False). Solo eventos en borrador o rechazados."""
-    e = _mio(db, org, id_evento)
-    if e.estado_evento.nombre not in ("borrador", "rechazado"):
-        raise HTTPException(409, "Solo se pueden eliminar eventos en borrador o rechazados")
-    e.estado = False
-    db.commit()
-    registrar(db, request, org.id_usuario, "eliminar_evento", "evento", e.id)
-
-
-@router.post("/eventos/{id_evento}/enviar")
-def enviar_a_aprobacion(id_evento: int, org: Organizador = Depends(organizador_actual), db: Session = Depends(get_db)):
-    e = _mio(db, org, id_evento)
-    if e.estado_evento.nombre != "borrador":
-        raise HTTPException(409, "Solo se pueden enviar eventos en borrador")
-    e.id_estado = id_estado_evento(db, "pendiente")
-    db.commit()
-    db.refresh(e)
-    return evento_out(db, e)
 
 
 # ---------------- Inscripciones ----------------

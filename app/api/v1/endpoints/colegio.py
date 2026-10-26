@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.deps import colegio_actual
-from app.api.v1.comun import evento_out, id_estado_inscripcion, inscritos, no_encontrado
+from app.api.v1.comun import id_estado_inscripcion, inscritos, no_encontrado
 from app.db.session import get_db
 from app.models import Colegio, Estudiante, EstadoEvento, Evento, Inscripcion, InscripcionEstudiante
 from app.schemas import InscripcionIn
@@ -13,15 +13,6 @@ router = APIRouter(prefix="/colegio", tags=["colegio"])
 
 
 # ---------------- Eventos e inscripciones ----------------
-@router.get("/eventos")
-def eventos_disponibles(col: Colegio = Depends(colegio_actual), db: Session = Depends(get_db)):
-    """Solo eventos PUBLICADOS del organizador que registro a este colegio."""
-    q = (db.query(Evento).join(EstadoEvento).filter(Evento.estado.is_(True), EstadoEvento.nombre == "publicado", Evento.id_organizador == col.id_organizador)
-         .order_by(Evento.fecha_inicio))
-    mias = {i.id_evento: i.estado_inscripcion.nombre for i in db.query(Inscripcion).filter_by(id_colegio=col.id)}
-    return [{**evento_out(db, e), "mi_inscripcion": mias.get(e.id)} for e in q.limit(500)]
-
-
 @router.post("/eventos/{id_evento}/inscripcion", status_code=201)
 def inscribirse(id_evento: int, datos: InscripcionIn, col: Colegio = Depends(colegio_actual), db: Session = Depends(get_db)):
     e = (db.query(Evento).join(EstadoEvento).filter(Evento.estado.is_(True), Evento.id == id_evento, Evento.id_organizador == col.id_organizador,

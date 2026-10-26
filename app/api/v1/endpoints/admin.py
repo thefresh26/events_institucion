@@ -1,15 +1,13 @@
-from datetime import datetime, timezone
-
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.deps import requerir_rol
-from app.api.v1.comun import evento_out, id_estado_evento, no_encontrado
+from app.api.v1.comun import no_encontrado
 from app.core.auditoria import registrar
 from app.db.session import get_db
 from app.models import Colegio, Evento, EstadoEvento, Inscripcion, Organizador, Usuario
-from app.schemas import ActivoIn, DecisionEvento
+from app.schemas import ActivoIn
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 Admin = Depends(requerir_rol("administrador"))
@@ -44,36 +42,3 @@ def activar_organizador(id_organizador: int, datos: ActivoIn, request: Request, 
 def colegios(_: Usuario = Admin, db: Session = Depends(get_db)):
     return [{"id": c.id, "nombre": c.nombre, "nit": c.nit, "ciudad": c.ciudad.nombre, "organizador": db.get(Organizador, c.id_organizador).nombre,
              "activo": c.usuario.activo} for c in db.query(Colegio).filter(Colegio.estado.is_(True)).order_by(Colegio.nombre)]
-
-
-@router.get("/eventos")
-def eventos(estado: str | None = None, _: Usuario = Admin, db: Session = Depends(get_db)):
-    q = db.query(Evento).filter(Evento.estado.is_(True)).order_by(Evento.fecha_inicio)
-    if estado:
-        q = q.join(EstadoEvento).filter(EstadoEvento.nombre == estado)
-    return [evento_out(db, e) for e in q.limit(500)]
-
-
-@router.patch("/eventos/{id_evento}/decision")
-def decidir(id_evento: int, datos: DecisionEvento, request: Request, admin: Usuario = Admin, db: Session = Depends(get_db)):
-    e = db.get(Evento, id_evento) or (_ for _ in ()).throw(no_encontrado())
-    if e.estado_evento.nombre != "pendiente":
-        raise HTTPException(409, "Solo se pueden decidir eventos pendientes")
-    e.id_estado = id_estado_evento(db, datos.decision)
-    e.id_aprobador, e.fecha_aprobacion = admin.id, datetime.now(timezone.utc)
-    db.commit()
-    registrar(db, request, admin.id, f"evento_{datos.decision}", "evento", e.id)
-    db.refresh(e)
-    return evento_out(db, e)
-
-
-@router.post("/eventos/{id_evento}/cerrar")
-def cerrar(id_evento: int, request: Request, admin: Usuario = Admin, db: Session = Depends(get_db)):
-    e = db.get(Evento, id_evento) or (_ for _ in ()).throw(no_encontrado())
-    if e.estado_evento.nombre != "publicado":
-        raise HTTPException(409, "Solo se pueden cerrar eventos publicados")
-    e.id_estado = id_estado_evento(db, "cerrado")
-    db.commit()
-    registrar(db, request, admin.id, "evento_cerrado", "evento", e.id)
-    db.refresh(e)
-    return evento_out(db, e)
