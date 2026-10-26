@@ -209,7 +209,7 @@ def test_frontend_servido_con_cabeceras_de_seguridad():
     assert c.get("/robots.txt").status_code == 200
     assert c.get("/../.env").status_code in (200, 404) and "SECRET_KEY" not in c.get("/../.env").text  # no se sale de la carpeta
     # 404 real para rutas inventadas, y el cache correcto en cada tipo de recurso
-    assert c.get("/ruta-inventada").status_code == 404 and c.get("/docs").status_code == 404
+    assert c.get("/ruta-inventada").status_code == 404 and c.get("/docs").status_code == 200  # Swagger habilitado (docs_habilitada=True)
     assert c.get("/api/v1/no-existe").status_code == 404
     assert c.get("/api/v1/catalogos/grados").headers["cache-control"] == "no-store"
     assert c.get("/login").headers["cache-control"] == "no-cache"
