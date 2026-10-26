@@ -1,5 +1,5 @@
 <script module>
-	// Reemplaza a toast.svelte.js: cualquier pagina hace  import { avisar } from '$lib/components/Mensaje.svelte'
+	// Aviso flotante. Cualquier pagina hace  import { avisar } from '$lib/components/Mensaje.svelte'
 	// y llama avisar('Guardado') o avisar('Algo falló', true). El +layout pone <Mensaje /> una sola vez.
 	const aviso = $state({ texto: '', error: false });
 	let reloj;
