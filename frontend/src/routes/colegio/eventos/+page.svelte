@@ -1,9 +1,16 @@
 <script>
 	import { onMount } from 'svelte';
-	import { api, fechaLarga } from '$lib/api.js';
-	import Estado from '$lib/Estado.svelte';
-	import Modal from '$lib/Modal.svelte';
-	import { avisar } from '$lib/toast.svelte.js';
+	import { fechaLarga } from '$lib/services/api_base.js';
+	import { listarEventosDisponibles } from '$lib/services/api_evento.js';
+	import { listarEstudiantes } from '$lib/services/api_estudiante.js';
+	import { inscribirse } from '$lib/services/api_inscripcion.js';
+	import Header from '$lib/components/Header.svelte';
+	import Card from '$lib/components/Card.svelte';
+	import Boton from '$lib/components/Boton.svelte';
+	import Insignia from '$lib/components/Insignia.svelte';
+	import SinDatos from '$lib/components/SinDatos.svelte';
+	import Modal from '$lib/components/Modal.svelte';
+	import { avisar } from '$lib/components/Mensaje.svelte';
 
 	let eventos = $state([]);
 	let estudiantes = $state([]);
@@ -13,7 +20,7 @@
 
 	async function cargar() {
 		try {
-			[eventos, estudiantes] = await Promise.all([api('/colegio/eventos'), api('/colegio/estudiantes')]);
+			[eventos, estudiantes] = await Promise.all([listarEventosDisponibles(), listarEstudiantes()]);
 		} catch (e) {
 			avisar(e.message, true);
 		}
@@ -30,7 +37,7 @@
 		error = '';
 		if (marcados.length > sel.cupo_estudiantes) return (error = `Máximo ${sel.cupo_estudiantes} estudiantes`);
 		try {
-			await api(`/colegio/eventos/${sel.id}/inscripcion`, { method: 'POST', body: { estudiantes: marcados } });
+			await inscribirse(sel.id, marcados);
 			sel = null;
 			avisar('Inscripción enviada. El organizador la revisará.');
 			cargar();
@@ -42,25 +49,24 @@
 
 <svelte:head><title>Eventos | Conexión Escolar</title></svelte:head>
 
-<h2>Eventos disponibles</h2>
-<p class="sub">Eventos publicados por tu organizador. Matricula a tu colegio eligiendo a los estudiantes que participarán.</p>
+<Header titulo="Eventos disponibles" subtitulo="Eventos publicados por tu organizador. Matricula a tu colegio eligiendo a los estudiantes que participarán." />
 <div class="grid g2">
 	{#each eventos as e}
-		<div class="card">
+		<Card>
 			<h3>{e.nombre}</h3>
 			<p class="mut" style="margin:0 0 8px">{e.descripcion ?? ''}</p>
 			<p style="margin:0 0 4px">{fechaLarga(e.fecha_inicio)} · {e.lugar}</p>
 			<p class="mut" style="margin:0 0 12px">Cupos: {e.colegios_inscritos}/{e.cupo_colegios} colegios · hasta {e.cupo_estudiantes} estudiantes por colegio</p>
 			{#if e.mi_inscripcion}
-				<Estado valor={e.mi_inscripcion} />
+				<Insignia valor={e.mi_inscripcion} />
 			{:else}
-				<button class="btn" disabled={e.colegios_inscritos >= e.cupo_colegios} onclick={() => abrir(e)}>
+				<Boton disabled={e.colegios_inscritos >= e.cupo_colegios} onclick={() => abrir(e)}>
 					{e.colegios_inscritos >= e.cupo_colegios ? 'Sin cupos' : 'Matricular colegio'}
-				</button>
+				</Boton>
 			{/if}
-		</div>
+		</Card>
 	{:else}
-		<p class="mut">No hay eventos publicados por ahora.</p>
+		<SinDatos texto="No hay eventos publicados por ahora." />
 	{/each}
 </div>
 
@@ -71,12 +77,12 @@
 			{#each estudiantes as s}
 				<label class="chk"><input type="checkbox" value={s.id} bind:group={marcados} /> {s.nombre} {s.apellido} <span class="mut">· grado {s.grado}</span></label>
 			{:else}
-				<p class="mut">Primero registra estudiantes en la sección «Estudiantes».</p>
+				<SinDatos texto="Primero registra estudiantes en la sección «Estudiantes»." />
 			{/each}
 			{#if error}<p class="err" role="alert">{error}</p>{/if}
 			<div class="row" style="justify-content:flex-end;margin:16px 0 0">
-				<button type="button" class="btn o" onclick={() => (sel = null)}>Cancelar</button>
-				<button class="btn" disabled={!marcados.length}>Enviar inscripción</button>
+				<Boton variante="borde" onclick={() => (sel = null)}>Cancelar</Boton>
+				<Boton tipo="submit" disabled={!marcados.length}>Enviar inscripción</Boton>
 			</div>
 		</form>
 	</Modal>
