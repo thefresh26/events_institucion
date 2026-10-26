@@ -1,12 +1,17 @@
 <script>
 	import { onMount } from 'svelte';
-	import { api } from '$lib/api.js';
-	import { avisar } from '$lib/toast.svelte.js';
+	import { listarOrganizadores, activarOrganizador } from '$lib/services/api_admin.js';
+	import Header from '$lib/components/Header.svelte';
+	import Card from '$lib/components/Card.svelte';
+	import Boton from '$lib/components/Boton.svelte';
+	import Insignia from '$lib/components/Insignia.svelte';
+	import SinDatos from '$lib/components/SinDatos.svelte';
+	import { avisar } from '$lib/components/Mensaje.svelte';
 
 	let lista = $state([]);
 	async function cargar() {
 		try {
-			lista = await api('/admin/organizadores');
+			lista = await listarOrganizadores();
 		} catch (e) {
 			avisar(e.message, true);
 		}
@@ -15,7 +20,7 @@
 
 	async function activar(o, activo) {
 		try {
-			await api(`/admin/organizadores/${o.id}/activo`, { method: 'PATCH', body: { activo } });
+			await activarOrganizador(o.id, activo);
 			avisar(activo ? 'Organizador aprobado' : 'Organizador desactivado');
 			cargar();
 		} catch (e) {
@@ -26,27 +31,26 @@
 
 <svelte:head><title>Organizadores | Conexión Escolar</title></svelte:head>
 
-<h2>Organizadores</h2>
-<p class="sub">Aprueba las cuentas nuevas antes de que puedan crear eventos.</p>
-<div class="card tabla">
+<Header titulo="Organizadores" subtitulo="Aprueba las cuentas nuevas antes de que puedan crear eventos." />
+<Card class="tabla">
 	<table>
 		<thead><tr><th>Organización</th><th>NIT</th><th>Correo</th><th>Teléfono</th><th>Estado</th><th></th></tr></thead>
 		<tbody>
 			{#each lista as o}
 				<tr>
 					<td><strong>{o.nombre}</strong></td><td>{o.nit}</td><td>{o.correo}</td><td>{o.telefono ?? ''}</td>
-					<td><span class="b {o.activo ? 'publicado' : 'pendiente'}">{o.activo ? 'Activo' : 'Pendiente / inactivo'}</span></td>
+					<td><Insignia valor={o.activo ? 'publicado' : 'pendiente'} texto={o.activo ? 'Activo' : 'Pendiente / inactivo'} /></td>
 					<td>
 						{#if o.activo}
-							<button class="btn o s" onclick={() => activar(o, false)}>Desactivar</button>
+							<Boton variante="borde" pequeno onclick={() => activar(o, false)}>Desactivar</Boton>
 						{:else}
-							<button class="btn s" onclick={() => activar(o, true)}>Aprobar</button>
+							<Boton pequeno onclick={() => activar(o, true)}>Aprobar</Boton>
 						{/if}
 					</td>
 				</tr>
 			{:else}
-				<tr><td colspan="6" class="mut">Aún no hay organizadores registrados.</td></tr>
+				<SinDatos texto="Aún no hay organizadores registrados." columnas={6} />
 			{/each}
 		</tbody>
 	</table>
-</div>
+</Card>

@@ -23,5 +23,5 @@ export const restablecerContrasena = (id) => peticion(`/admin/usuarios/${id}/res
 // GET -> roles con sus modulos
 export const listarRoles = () => peticion('/admin/roles');
 
-// PUT -> reemplaza los modulos (nombres) de un rol
+// PUT -> reemplaza los modulos de un rol (lista de ids de modulo)
 export const asignarModulos = (idRol, modulos) => peticion(`/admin/roles/${idRol}/modulos`, { method: 'PUT', body: { modulos } });

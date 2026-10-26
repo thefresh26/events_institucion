@@ -1,12 +1,16 @@
 <script>
 	import { onMount } from 'svelte';
-	import { api } from '$lib/api.js';
-	import { avisar } from '$lib/toast.svelte.js';
+	import { listarColegios } from '$lib/services/api_admin.js';
+	import Header from '$lib/components/Header.svelte';
+	import Card from '$lib/components/Card.svelte';
+	import Insignia from '$lib/components/Insignia.svelte';
+	import SinDatos from '$lib/components/SinDatos.svelte';
+	import { avisar } from '$lib/components/Mensaje.svelte';
 
 	let lista = $state([]);
 	onMount(async () => {
 		try {
-			lista = await api('/admin/colegios');
+			lista = await listarColegios();
 		} catch (e) {
 			avisar(e.message, true);
 		}
@@ -15,18 +19,17 @@
 
 <svelte:head><title>Colegios | Conexión Escolar</title></svelte:head>
 
-<h2>Colegios</h2>
-<p class="sub">Colegios registrados por los organizadores.</p>
-<div class="card tabla">
+<Header titulo="Colegios" subtitulo="Colegios registrados por los organizadores." />
+<Card class="tabla">
 	<table>
 		<thead><tr><th>Colegio</th><th>NIT</th><th>Ciudad</th><th>Organizador</th><th>Estado</th></tr></thead>
 		<tbody>
 			{#each lista as c}
 				<tr><td><strong>{c.nombre}</strong></td><td>{c.nit}</td><td>{c.ciudad}</td><td>{c.organizador}</td>
-					<td><span class="b {c.activo ? 'publicado' : 'borrador'}">{c.activo ? 'Activo' : 'Inactivo'}</span></td></tr>
+					<td><Insignia valor={c.activo ? 'publicado' : 'borrador'} texto={c.activo ? 'Activo' : 'Inactivo'} /></td></tr>
 			{:else}
-				<tr><td colspan="5" class="mut">Aún no hay colegios.</td></tr>
+				<SinDatos texto="Aún no hay colegios." columnas={5} />
 			{/each}
 		</tbody>
 	</table>
-</div>
+</Card>
