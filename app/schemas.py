@@ -69,22 +69,6 @@ class CambioContrasena(_Base):
     _clave = field_validator("nueva")(lambda cls, v: clave_fuerte(v))
 
 
-class EstudianteNuevo(_Base):
-    nombre: str = Field(min_length=2, max_length=100)
-    apellido: str = Field(min_length=2, max_length=100)
-    documento: str = Field(pattern=r"^\d{5,15}$")
-    id_grado: int = Field(gt=0)
-    nombre_acudiente: str = Field(min_length=3, max_length=150)
-    acudiente_autoriza: bool  # el colegio confirma que tiene la autorizacion (Ley 1581 de 2012)
-
-    @field_validator("acudiente_autoriza")
-    @classmethod
-    def debe_autorizar(cls, v):
-        if not v:
-            raise ValueError("Debes confirmar la autorización del acudiente")
-        return v
-
-
 class ActivoIn(_Base):
     activo: bool
 

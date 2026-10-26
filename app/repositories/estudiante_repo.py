@@ -1,0 +1,51 @@
+from app.core.database import Database
+from app.models.estudiante import EstudianteNuevo
+
+# Columnas que se devuelven al frontend (grado por nombre, no por id)
+COLUMNAS = "id, nombre, apellido, documento, (SELECT nombre FROM grado WHERE grado.id = id_grado) AS grado"
+
+
+class EstudianteRepository:
+    def __init__(self):
+        # Composición: El repositorio instancia su propia conexión
+        self.db = Database()
+
+    def obtener_todos(self, id_colegio: int):
+        """Solo los estudiantes del colegio que pregunta (nunca los de otro colegio)."""
+        with self.db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(f"""
+                SELECT {COLUMNAS} FROM estudiante
+                WHERE id_colegio = %s AND estado = true
+                ORDER BY apellido, nombre LIMIT 1000;
+            """, (id_colegio,))
+            return cursor.fetchall()
+
+    def grado_valido(self, id_grado: int):
+        with self.db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM grado WHERE id = %s AND estado = true;", (id_grado,))
+            return cursor.fetchone() is not None
+
+    def crear(self, id_colegio: int, estudiante: EstudianteNuevo):
+        """Estudiante + autorizacion del acudiente en la misma transaccion (o se guardan los dos, o ninguno)."""
+        with self.db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(f"""
+                INSERT INTO estudiante (id_colegio, id_grado, nombre, apellido, documento)
+                VALUES (%s, %s, %s, %s, %s) RETURNING {COLUMNAS};
+            """, (id_colegio, estudiante.id_grado, estudiante.nombre, estudiante.apellido, estudiante.documento))
+            nuevo = cursor.fetchone()
+            cursor.execute("INSERT INTO autorizacion_acudiente (id_estudiante, nombre_acudiente, vigente) VALUES (%s, %s, true);",
+                           (nuevo["id"], estudiante.nombre_acudiente))
+            return nuevo
+
+    def eliminar(self, estudiante_id: int, id_colegio: int):
+        """Borrado logico. Filtra por id_colegio: un colegio no puede tocar estudiantes de otro (evita IDOR)."""
+        with self.db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE estudiante SET estado = false, actualizado = now()
+                WHERE id = %s AND id_colegio = %s AND estado = true RETURNING id;
+            """, (estudiante_id, id_colegio))
+            return cursor.fetchone() is not None
