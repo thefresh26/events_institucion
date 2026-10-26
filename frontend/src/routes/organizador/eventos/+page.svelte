@@ -1,26 +1,34 @@
 <script>
 	import { onMount } from 'svelte';
-	import { api, fechaLarga } from '$lib/api.js';
-	import Estado from '$lib/Estado.svelte';
-	import Modal from '$lib/Modal.svelte';
-	import { avisar } from '$lib/toast.svelte.js';
+	import { fechaLarga } from '$lib/services/api_base.js';
+	import { listarMisEventos, crearEvento, actualizarEvento, eliminarEvento, enviarEvento } from '$lib/services/api_evento.js';
+	import { listarCategorias, listarCiudades } from '$lib/services/api_catalogo.js';
+	import Header from '$lib/components/Header.svelte';
+	import Card from '$lib/components/Card.svelte';
+	import Boton from '$lib/components/Boton.svelte';
+	import CampoFormulario from '$lib/components/CampoFormulario.svelte';
+	import Insignia from '$lib/components/Insignia.svelte';
+	import SinDatos from '$lib/components/SinDatos.svelte';
+	import Modal from '$lib/components/Modal.svelte';
+	import { avisar } from '$lib/components/Mensaje.svelte';
 
 	let eventos = $state([]);
 	let categorias = $state([]);
 	let ciudades = $state([]);
 	let form = $state(null); // null = cerrado
 	let error = $state('');
+	let porEliminar = $state(null); // evento que se confirma en el Modal
 
 	async function cargar() {
 		try {
-			eventos = await api('/organizador/eventos');
+			eventos = await listarMisEventos();
 		} catch (e) {
 			avisar(e.message, true);
 		}
 	}
 	onMount(async () => {
 		cargar();
-		[categorias, ciudades] = await Promise.all([api('/catalogos/categorias'), api('/catalogos/ciudades')]).catch(() => [[], []]);
+		[categorias, ciudades] = await Promise.all([listarCategorias(), listarCiudades()]).catch(() => [[], []]);
 	});
 
 	const aLocal = (iso) => (iso ? new Date(new Date(iso).getTime() - new Date(iso).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '');
@@ -40,7 +48,7 @@
 			fecha_inicio: new Date(c.fecha_inicio).toISOString(), fecha_fin: c.fecha_fin ? new Date(c.fecha_fin).toISOString() : null
 		};
 		try {
-			await api(id ? `/organizador/eventos/${id}` : '/organizador/eventos', { method: id ? 'PUT' : 'POST', body: cuerpo });
+			await (id ? actualizarEvento(id, cuerpo) : crearEvento(cuerpo));
 			form = null;
 			avisar('Evento guardado como borrador');
 			cargar();
@@ -50,21 +58,31 @@
 	}
 	async function enviar(id) {
 		try {
-			await api(`/organizador/eventos/${id}/enviar`, { method: 'POST' });
+			await enviarEvento(id);
 			avisar('Enviado al administrador para su aprobación');
 			cargar();
 		} catch (e) {
 			avisar(e.message, true);
 		}
 	}
+	async function eliminar() {
+		const e = porEliminar;
+		porEliminar = null;
+		try {
+			await eliminarEvento(e.id);
+			avisar('Evento eliminado');
+			cargar();
+		} catch (err) {
+			avisar(err.message, true);
+		}
+	}
 </script>
 
 <svelte:head><title>Mis eventos | Conexión Escolar</title></svelte:head>
 
-<h2>Mis eventos</h2>
-<p class="sub">Crea tus eventos y envíalos al administrador para que los publique.</p>
-<div class="row"><button class="btn" onclick={() => abrir(null)}>+ Nuevo evento</button></div>
-<div class="card tabla">
+<Header titulo="Mis eventos" subtitulo="Crea tus eventos y envíalos al administrador para que los publique." />
+<div class="row"><Boton onclick={() => abrir(null)}>+ Nuevo evento</Boton></div>
+<Card class="tabla">
 	<table>
 		<thead><tr><th>Evento</th><th>Fecha</th><th>Lugar</th><th>Cupos</th><th>Estado</th><th></th></tr></thead>
 		<tbody>
@@ -72,32 +90,33 @@
 				<tr>
 					<td><strong>{e.nombre}</strong><br /><span class="mut">{e.categoria}</span></td>
 					<td>{fechaLarga(e.fecha_inicio)}</td><td>{e.lugar}</td><td>{e.colegios_inscritos}/{e.cupo_colegios}</td>
-					<td><Estado valor={e.estado} /></td>
+					<td><Insignia valor={e.estado} /></td>
 					<td>
 						{#if e.estado === 'borrador' || e.estado === 'rechazado'}
-							<button class="btn o s" onclick={() => abrir(e)}>Editar</button>
-						{/if}
-						{#if e.estado === 'borrador'}
-							<button class="btn s" onclick={() => enviar(e.id)}>Enviar a aprobación</button>
+							<div class="row" style="margin:0;flex-wrap:nowrap;white-space:nowrap">
+								<Boton variante="borde" pequeno onclick={() => abrir(e)}>Editar</Boton>
+								{#if e.estado === 'borrador'}
+									<Boton pequeno onclick={() => enviar(e.id)}>Enviar a aprobación</Boton>
+								{/if}
+								<Boton variante="borrar" pequeno onclick={() => (porEliminar = e)}>Eliminar</Boton>
+							</div>
 						{/if}
 					</td>
 				</tr>
 			{:else}
-				<tr><td colspan="6" class="mut">Todavía no has creado eventos.</td></tr>
+				<SinDatos texto="Todavía no has creado eventos." columnas={6} />
 			{/each}
 		</tbody>
 	</table>
-</div>
+</Card>
 
 {#if form}
 	<Modal titulo={form.id ? 'Editar evento' : 'Nuevo evento'} cerrar={() => (form = null)}>
 		<form onsubmit={guardar}>
-			<label for="n">Nombre</label>
-			<input id="n" required minlength="3" maxlength="150" bind:value={form.nombre} />
+			<CampoFormulario id="n" etiqueta="Nombre" required minlength="3" maxlength="150" bind:value={form.nombre} />
 			<label for="d">Descripción (opcional)</label>
 			<textarea id="d" rows="3" maxlength="500" bind:value={form.descripcion}></textarea>
-			<label for="l">Lugar</label>
-			<input id="l" required minlength="3" maxlength="150" bind:value={form.lugar} />
+			<CampoFormulario id="l" etiqueta="Lugar" required minlength="3" maxlength="150" bind:value={form.lugar} />
 			<label for="c">Ciudad</label>
 			<select id="c" required bind:value={form.id_ciudad}>
 				<option value="" disabled>Selecciona…</option>
@@ -108,18 +127,27 @@
 				{#each categorias as c}<option value={c.id}>{c.nombre}</option>{/each}
 			</select>
 			<div class="row" style="margin:0">
-				<div style="flex:1"><label for="fi">Inicio</label><input id="fi" type="datetime-local" required bind:value={form.fecha_inicio} /></div>
-				<div style="flex:1"><label for="ff">Fin (opcional)</label><input id="ff" type="datetime-local" bind:value={form.fecha_fin} /></div>
+				<div style="flex:1"><CampoFormulario id="fi" etiqueta="Inicio" tipo="datetime-local" required bind:value={form.fecha_inicio} /></div>
+				<div style="flex:1"><CampoFormulario id="ff" etiqueta="Fin (opcional)" tipo="datetime-local" bind:value={form.fecha_fin} /></div>
 			</div>
 			<div class="row" style="margin:0">
-				<div style="flex:1"><label for="cc">Cupo de colegios</label><input id="cc" type="number" min="1" max="1000" required bind:value={form.cupo_colegios} /></div>
-				<div style="flex:1"><label for="ce">Estudiantes por colegio</label><input id="ce" type="number" min="1" max="500" required bind:value={form.cupo_estudiantes} /></div>
+				<div style="flex:1"><CampoFormulario id="cc" etiqueta="Cupo de colegios" tipo="number" min="1" max="1000" required bind:value={form.cupo_colegios} /></div>
+				<div style="flex:1"><CampoFormulario id="ce" etiqueta="Estudiantes por colegio" tipo="number" min="1" max="500" required bind:value={form.cupo_estudiantes} /></div>
 			</div>
 			{#if error}<p class="err" role="alert">{error}</p>{/if}
 			<div class="row" style="justify-content:flex-end;margin:16px 0 0">
-				<button type="button" class="btn o" onclick={() => (form = null)}>Cancelar</button>
-				<button class="btn">Guardar borrador</button>
+				<Boton variante="borde" onclick={() => (form = null)}>Cancelar</Boton>
+				<Boton tipo="submit">Guardar borrador</Boton>
 			</div>
 		</form>
+	</Modal>
+{/if}
+
+{#if porEliminar}
+	<Modal titulo="Eliminar evento" cerrar={() => (porEliminar = null)}>
+		<p>¿Eliminar <strong>{porEliminar.nombre}</strong>? Dejará de aparecer en tus eventos.</p>
+		<div class="row" style="justify-content:flex-end;margin:16px 0 0">
+			<Boton variante="borde" onclick={() => (porEliminar = null)}>Cancelar</Boton><Boton variante="borrar" onclick={eliminar}>Eliminar</Boton>
+		</div>
 	</Modal>
 {/if}
