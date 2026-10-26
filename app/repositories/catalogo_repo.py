@@ -1,3 +1,4 @@
+from app.core.auditoria import auditar
 from app.core.database import Database
 
 # nombre en la URL -> (tabla en PostgreSQL, campos que se pueden escribir, campos obligatorios)
@@ -66,7 +67,7 @@ class CatalogoRepository:
             cursor = conn.cursor()
             cursor.execute(f"INSERT INTO {nombre_tabla} ({columnas}) VALUES ({marcas}) RETURNING *;", list(datos.values()))
             nuevo = cursor.fetchone()
-            self._auditar(cursor, id_usuario, f"crear_{tabla}", nombre_tabla, nuevo["id"], ip)
+            auditar(cursor, id_usuario, f"crear_{tabla}", nombre_tabla, nuevo["id"], ip)
             return nuevo
 
     def actualizar(self, tabla: str, registro_id: int, datos: dict, id_usuario: int, ip: str | None):
@@ -79,7 +80,7 @@ class CatalogoRepository:
                            [*datos.values(), registro_id])
             actualizado = cursor.fetchone()
             if actualizado:
-                self._auditar(cursor, id_usuario, f"editar_{tabla}", nombre_tabla, registro_id, ip)
+                auditar(cursor, id_usuario, f"editar_{tabla}", nombre_tabla, registro_id, ip)
             return actualizado
 
     def cambiar_estado(self, tabla: str, registro_id: int, estado: bool, id_usuario: int, ip: str | None):
@@ -91,13 +92,8 @@ class CatalogoRepository:
                            (estado, registro_id))
             fila = cursor.fetchone()
             if fila:
-                self._auditar(cursor, id_usuario, f"estado_{tabla}", nombre_tabla, registro_id, ip)
+                auditar(cursor, id_usuario, f"estado_{tabla}", nombre_tabla, registro_id, ip)
             return fila
 
     def eliminar(self, tabla: str, registro_id: int, id_usuario: int, ip: str | None):
         return self.cambiar_estado(tabla, registro_id, False, id_usuario, ip)
-
-    def _auditar(self, cursor, id_usuario, accion, nombre_tabla, registro_id, ip):
-        # Misma transaccion que el cambio: o se guardan los dos, o ninguno.
-        cursor.execute("INSERT INTO auditoria (id_usuario, accion, tabla, registro_id, ip) VALUES (%s, %s, %s, %s, %s);",
-                       (id_usuario, accion, nombre_tabla, registro_id, ip))

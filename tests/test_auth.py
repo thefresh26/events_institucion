@@ -87,6 +87,10 @@ def test_aislamiento_entre_actores():
     assert org2.get(f"{API}/organizador/colegios").json()[0]["nit"] == "900000003"   # solo los suyos
     assert col1.get(f"{API}/organizador/colegios").status_code == 403                # un colegio no es organizador
     assert TestClient(app).get(f"{API}/colegio/estudiantes").status_code == 401      # sin sesion
+    assert col1.delete(f"{API}/colegio/estudiantes/{e['id']}").status_code == 204    # el dueño si puede retirarlo
+    with SessionLocal() as db:                                                         # crear y retirar quedan auditados
+        acciones = db.execute(text("SELECT accion FROM auditoria WHERE tabla = 'estudiante' AND registro_id = :i"), {"i": e["id"]}).scalars().all()
+    assert sorted(acciones) == ["crear_estudiante", "retirar_estudiante"]
 
 
 def test_validaciones():

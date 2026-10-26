@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from psycopg.errors import IntegrityError
 
 from app.api.deps import requerir_rol
+from app.core.auditoria import ip_de
 from app.models.catalogo import CatalogoEdita, CatalogoNuevo, EstadoIn
 from app.repositories.catalogo_repo import TABLAS, CatalogoRepository
 
@@ -44,10 +45,6 @@ def validar_campos(tabla: str, datos: dict, completo: bool) -> dict:
     if faltan:
         raise HTTPException(status_code=422, detail=f"Falta el campo {', '.join(sorted(faltan))}")
     return datos
-
-
-def ip_de(request: Request):
-    return request.client.host if request.client else None
 
 
 def no_encontrado():

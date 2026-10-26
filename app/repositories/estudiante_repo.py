@@ -1,3 +1,4 @@
+from app.core.auditoria import auditar
 from app.core.database import Database
 from app.models.estudiante import EstudianteNuevo
 
@@ -27,7 +28,7 @@ class EstudianteRepository:
             cursor.execute("SELECT id FROM grado WHERE id = %s AND estado = true;", (id_grado,))
             return cursor.fetchone() is not None
 
-    def crear(self, id_colegio: int, estudiante: EstudianteNuevo):
+    def crear(self, id_colegio: int, estudiante: EstudianteNuevo, id_usuario: int, ip: str | None):
         """Estudiante + autorizacion del acudiente en la misma transaccion (o se guardan los dos, o ninguno)."""
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
@@ -38,9 +39,10 @@ class EstudianteRepository:
             nuevo = cursor.fetchone()
             cursor.execute("INSERT INTO autorizacion_acudiente (id_estudiante, nombre_acudiente, vigente) VALUES (%s, %s, true);",
                            (nuevo["id"], estudiante.nombre_acudiente))
+            auditar(cursor, id_usuario, "crear_estudiante", "estudiante", nuevo["id"], ip)
             return nuevo
 
-    def eliminar(self, estudiante_id: int, id_colegio: int):
+    def eliminar(self, estudiante_id: int, id_colegio: int, id_usuario: int, ip: str | None):
         """Borrado logico. Filtra por id_colegio: un colegio no puede tocar estudiantes de otro (evita IDOR)."""
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
@@ -48,4 +50,7 @@ class EstudianteRepository:
                 UPDATE estudiante SET estado = false, actualizado = now()
                 WHERE id = %s AND id_colegio = %s AND estado = true RETURNING id;
             """, (estudiante_id, id_colegio))
-            return cursor.fetchone() is not None
+            if cursor.fetchone() is None:
+                return False
+            auditar(cursor, id_usuario, "retirar_estudiante", "estudiante", estudiante_id, ip)
+            return True
