@@ -12,6 +12,7 @@ router_colegio = APIRouter(prefix="/colegio/eventos", tags=["Eventos (colegio)"]
 router_admin = APIRouter(prefix="/admin/eventos", tags=["Eventos (administrador)"])
 Admin = Depends(requerir_rol("administrador"))
 EDITABLES = ("borrador", "rechazado")
+ELIMINABLES = ("borrador", "rechazado", "cerrado")
 
 
 def no_encontrado():
@@ -52,9 +53,9 @@ def actualizar_evento(evento_id: int, evento: Evento, request: Request, org=Depe
 
 @router.delete("/{evento_id}", status_code=204)
 def eliminar_evento(evento_id: int, request: Request, org=Depends(organizador_actual)):
-    """Borrado logico (estado = false). Solo eventos en borrador o rechazados."""
-    if evento_del_organizador(evento_id, org)["estado"] not in EDITABLES:
-        raise HTTPException(status_code=409, detail="Solo se pueden eliminar eventos en borrador o rechazados")
+    """Borrado logico (estado = false). Solo eventos en borrador, rechazados o cerrados."""
+    if evento_del_organizador(evento_id, org)["estado"] not in ELIMINABLES:
+        raise HTTPException(status_code=409, detail="Solo se pueden eliminar eventos en borrador, rechazados o cerrados")
     repo.eliminar(evento_id, org.id_usuario, ip_de(request))
 
 

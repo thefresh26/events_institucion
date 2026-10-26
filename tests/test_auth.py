@@ -151,6 +151,13 @@ def test_eventos_editar_eliminar_cerrar():
     assert org.put(f"{API}/organizador/eventos/{eid}", json=evento_json(id_ciudad=999)).status_code == 422
     assert org.delete(f"{API}/organizador/eventos/{eid}").status_code == 204                  # borrado logico
     assert all(e["id"] != eid for e in org.get(f"{API}/organizador/eventos").json())
+    pendiente = org.post(f"{API}/organizador/eventos", json=evento_json()).json()["id"]
+    org.post(f"{API}/organizador/eventos/{pendiente}/enviar")
+    assert org.delete(f"{API}/organizador/eventos/{pendiente}").status_code == 409            # pendiente: no se borra
+    rechazado = org.post(f"{API}/organizador/eventos", json=evento_json()).json()["id"]
+    org.post(f"{API}/organizador/eventos/{rechazado}/enviar")
+    adm.patch(f"{API}/admin/eventos/{rechazado}/decision", json={"decision": "rechazado"})
+    assert org.delete(f"{API}/organizador/eventos/{rechazado}").status_code == 204            # rechazado: si
     eid = publicar(org, adm)
     assert org.delete(f"{API}/organizador/eventos/{eid}").status_code == 409                  # publicado: no se borra
     assert any(e["id"] == eid for e in adm.get(f"{API}/admin/eventos", params={"estado": "publicado"}).json())
@@ -160,9 +167,13 @@ def test_eventos_editar_eliminar_cerrar():
     assert ev["mi_inscripcion"] == "pendiente" and ev["colegios_inscritos"] == 1
     assert adm.post(f"{API}/admin/eventos/{eid}/cerrar").json()["estado"] == "cerrado"
     assert adm.post(f"{API}/admin/eventos/{eid}/cerrar").status_code == 409
+    assert org.delete(f"{API}/organizador/eventos/{eid}").status_code == 204                  # cerrado: si
+    assert all(e["id"] != eid for e in org.get(f"{API}/organizador/eventos").json())
     with SessionLocal() as db:
         acciones = db.execute(text("SELECT accion FROM auditoria WHERE tabla = 'evento' AND registro_id = :i ORDER BY id"), {"i": eid}).scalars().all()
-    assert acciones == ["crear_evento", "enviar_evento", "evento_publicado", "evento_cerrado"]
+    assert acciones == ["crear_evento", "enviar_evento", "evento_publicado", "evento_cerrado", "eliminar_evento"]
+    with SessionLocal() as db:                                                                  # la fila sigue: borrado logico
+        assert db.execute(text("SELECT estado FROM evento WHERE id = :i"), {"i": eid}).scalar() is False
 
 
 def test_flujo_de_evento_completo():

@@ -18,6 +18,7 @@
 	let form = $state(null); // null = cerrado
 	let error = $state('');
 	let porEliminar = $state(null); // evento que se confirma en el Modal
+	const ELIMINABLES = ['borrador', 'rechazado', 'cerrado']; // igual que el backend (rutas_eventos.py)
 
 	async function cargar() {
 		try {
@@ -92,9 +93,11 @@
 					<td>{fechaLarga(e.fecha_inicio)}</td><td>{e.lugar}</td><td>{e.colegios_inscritos}/{e.cupo_colegios}</td>
 					<td><Insignia valor={e.estado} /></td>
 					<td>
-						{#if e.estado === 'borrador' || e.estado === 'rechazado'}
+						{#if ELIMINABLES.includes(e.estado)}
 							<div class="row" style="margin:0;flex-wrap:nowrap;white-space:nowrap">
-								<Boton variante="borde" pequeno onclick={() => abrir(e)}>Editar</Boton>
+								{#if e.estado !== 'cerrado'}
+									<Boton variante="borde" pequeno onclick={() => abrir(e)}>Editar</Boton>
+								{/if}
 								{#if e.estado === 'borrador'}
 									<Boton pequeno onclick={() => enviar(e.id)}>Enviar a aprobación</Boton>
 								{/if}
