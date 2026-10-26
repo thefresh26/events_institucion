@@ -328,6 +328,16 @@ def test_admin_gestiona_usuarios_y_roles():
     assert org.put(f"{API}/admin/roles/1/modulos", json={"modulos": []}).status_code == 403
 
 
+def test_conteo_de_usuarios_por_rol_no_cuenta_eliminados():
+    adm = admin()
+    contar = lambda: next(r["usuarios"] for r in adm.get(f"{API}/admin/roles").json()["roles"] if r["nombre"] == "administrador")
+    antes = contar()
+    uid = adm.post(f"{API}/admin/usuarios", json=dict(correo="conteo@x.co", nombre="Ceci", apellido="Paz", rol="administrador")).json()["usuario"]["id"]
+    assert contar() == antes + 1
+    assert adm.delete(f"{API}/admin/usuarios/{uid}").status_code == 200
+    assert contar() == antes                                                   # el eliminado (estado=false) ya no cuenta
+
+
 def test_admin_elimina_usuario():
     adm = admin()
     uid = adm.post(f"{API}/admin/usuarios", json=dict(correo="borrar@x.co", nombre="Beto", apellido="Ruiz", rol="administrador")).json()["usuario"]["id"]
