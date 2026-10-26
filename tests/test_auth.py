@@ -112,7 +112,7 @@ def test_bloqueo_por_intentos():
 # ---------------- Eventos, inscripciones, asistencia y reportes ----------------
 from datetime import datetime, timedelta, timezone  # noqa: E402
 
-from app.api.v1.comun import csv_seguro  # noqa: E402
+from app.api.rutas_inscripciones import csv_seguro  # noqa: E402
 
 
 def evento_json(**extra):
@@ -216,6 +216,28 @@ def test_cupos_y_aislamiento_de_eventos():
     assert org1.put(f"{API}/organizador/eventos/{eid}", json=evento_json()).status_code == 409       # publicado: ya no se edita
     assert org1.post(f"{API}/organizador/eventos", json=evento_json(cupo_colegios=0)).status_code == 422
     assert org1.post(f"{API}/organizador/eventos", json=evento_json(fecha_fin="2000-01-01T00:00:00Z")).status_code == 422
+
+
+def test_cupo_lleno():
+    from concurrent.futures import ThreadPoolExecutor
+    org, adm = organizador("org80@x.co", "880000001"), admin()
+    cols = [colegio_de(org, f"rector8{n}@x.co", f"98000000{n}")[0] for n in range(7)]
+    est = [estudiante(c, f"80000000{n}") for n, c in enumerate(cols)]
+    # en orden: cupo de 2 colegios
+    eid = publicar(org, adm, cupo_colegios=2)
+    inscribir = lambda n, ev: cols[n].post(f"{API}/colegio/eventos/{ev}/inscripcion", json={"estudiantes": [est[n]]})
+    assert inscribir(0, eid).status_code == 201 and inscribir(1, eid).status_code == 201
+    r = inscribir(2, eid)
+    assert r.status_code == 409 and r.json()["detail"] == "El evento no tiene cupos disponibles"
+    rechazada = [i for i in org.get(f"{API}/organizador/inscripciones").json() if i["id_evento"] == eid][0]["id"]
+    assert org.patch(f"{API}/organizador/inscripciones/{rechazada}", json={"estado": "rechazada"}).status_code == 200
+    assert inscribir(2, eid).status_code == 201                                                   # el rechazo libero el cupo
+    assert cols[2].get(f"{API}/colegio/inscripciones").json()[0]["estado"] == "pendiente"
+    # al mismo tiempo: 4 colegios para 2 cupos -> SELECT ... FOR UPDATE deja entrar exactamente a 2
+    eid2 = publicar(org, adm, cupo_colegios=2)
+    with ThreadPoolExecutor(4) as hilos:
+        codigos = list(hilos.map(lambda n: inscribir(n, eid2).status_code, range(3, 7)))
+    assert sorted(codigos) == [201, 201, 409, 409]
 
 
 def test_csv_no_ejecuta_formulas():

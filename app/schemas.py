@@ -76,23 +76,6 @@ class EstadoIn(_Base):
     estado: bool
 
 
-class DecisionInscripcion(_Base):
-    estado: Literal["aceptada", "rechazada"]
-
-
-class InscripcionIn(_Base):
-    estudiantes: list[int] = Field(min_length=1, max_length=500)
-
-
-class MarcaAsistencia(_Base):
-    id_inscripcion_estudiante: int
-    asistio: bool
-
-
-class AsistenciaIn(_Base):
-    marcas: list[MarcaAsistencia] = Field(max_length=2000)
-
-
 class UsuarioNuevo(_Base):
     """El administrador crea cuentas ya activas (administrador u organizador)."""
     correo: EmailStr

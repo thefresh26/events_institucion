@@ -8,7 +8,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import rutas_catalogos, rutas_estudiantes, rutas_eventos
+from app.api import rutas_catalogos, rutas_estudiantes, rutas_eventos, rutas_inscripciones
 from app.api.v1.router import api_router
 from app.core.config import settings
 
@@ -74,6 +74,8 @@ app.include_router(rutas_estudiantes.router, prefix="/api/v1")
 app.include_router(rutas_eventos.router, prefix="/api/v1")
 app.include_router(rutas_eventos.router_colegio, prefix="/api/v1")
 app.include_router(rutas_eventos.router_admin, prefix="/api/v1")
+app.include_router(rutas_inscripciones.router, prefix="/api/v1")
+app.include_router(rutas_inscripciones.router_colegio, prefix="/api/v1")
 
 # Frontend compilado (SvelteKit adapter-static), cuando exista.
 DIST = Path(__file__).resolve().parent / "app" / "frontend_dist"
