@@ -125,7 +125,7 @@
 					<td class="mut">{fechaLarga(u.creado_en)}</td>
 					<td><Insignia valor={u.activo ? 'publicado' : 'rechazado'} texto={u.activo ? 'Activo' : 'Inactivo'} /></td>
 					<td>
-						<div class="row" style="margin:0;flex-wrap:nowrap">
+						<div class="row" style="margin:0;gap:6px">
 							<Boton variante="borde" pequeno onclick={() => { error = ''; edita = { ...u }; }}>Editar</Boton>
 							{#if u.id !== sesion.usuario.id}
 								<Boton variante="borde" pequeno onclick={() => (confirmar = { usuario: u, accion: 'restablecer' })}>Restablecer clave</Boton>
