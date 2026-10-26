@@ -100,7 +100,10 @@ def poner_estado(tabla: str, registro_id: int, estado: bool, request: Request, a
         rol = repo.obtener_por_id(tabla, registro_id)
         if rol and rol["nombre"] == "administrador":
             raise HTTPException(status_code=409, detail="El rol administrador no se puede eliminar")
-    fila = repo.cambiar_estado(tabla, registro_id, estado, admin.id, ip_de(request))
+    if estado:
+        fila = repo.cambiar_estado(tabla, registro_id, True, admin.id, ip_de(request))
+    else:
+        fila = repo.eliminar(tabla, registro_id, admin.id, ip_de(request))  # borrado logico
     if not fila:
         raise no_encontrado()
     return fila
