@@ -1,3 +1,8 @@
+<script>
+	import Card from '$lib/components/Card.svelte';
+	import Footer from '$lib/components/Footer.svelte';
+</script>
+
 <svelte:head>
 	<title>Términos y condiciones | Conexión Escolar</title>
 	<meta name="description" content="Condiciones de uso de la plataforma de eventos escolares para organizadores y colegios." />
@@ -5,7 +10,8 @@
 
 <div class="auth">
 	<img class="auth-logo" src="/logo.png" alt="Conexión Escolar" width="230" height="157" />
-	<article class="card" style="width:min(760px,100%)">
+	<Card style="width:min(760px,100%)">
+		<article>
 		<h1>Términos y condiciones</h1>
 		<p class="mut">Última actualización: octubre de 2026.</p>
 
@@ -27,6 +33,7 @@
 		<h2>6. Ley aplicable</h2>
 		<p>Estos términos se rigen por las leyes de la República de Colombia. Contacto: [CORREO DE CONTACTO].</p>
 
-		<p class="pie"><a href="/">Inicio</a><a href="/politica-de-privacidad">Política de privacidad</a></p>
+		<Footer><a href="/">Inicio</a><a href="/politica-de-privacidad">Política de privacidad</a></Footer>
 	</article>
+	</Card>
 </div>

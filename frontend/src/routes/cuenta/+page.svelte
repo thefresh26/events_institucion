@@ -1,7 +1,11 @@
 <script>
-	import { api } from '$lib/api.js';
+	import { cambiarContrasena } from '$lib/services/api_auth.js';
 	import { sesion } from '$lib/session.svelte.js';
-	import { avisar } from '$lib/toast.svelte.js';
+	import Header from '$lib/components/Header.svelte';
+	import Card from '$lib/components/Card.svelte';
+	import CampoFormulario from '$lib/components/CampoFormulario.svelte';
+	import Boton from '$lib/components/Boton.svelte';
+	import { avisar } from '$lib/components/Mensaje.svelte';
 
 	let actual = $state('');
 	let nueva = $state('');
@@ -11,7 +15,7 @@
 		e.preventDefault();
 		error = '';
 		try {
-			await api('/auth/cambiar-contrasena', { method: 'POST', body: { actual, nueva } });
+			await cambiarContrasena(actual, nueva);
 			actual = nueva = '';
 			avisar('Contraseña actualizada');
 		} catch (err) {
@@ -22,14 +26,13 @@
 
 <svelte:head><title>Mi cuenta | Conexión Escolar</title></svelte:head>
 
-<h2>Mi cuenta</h2>
-<p class="sub">{sesion.usuario.correo} · {sesion.usuario.rol}</p>
-<form class="card" style="max-width:440px" onsubmit={cambiar}>
-	<h3>Cambiar contraseña</h3>
-	<label for="a">Contraseña actual</label>
-	<input id="a" type="password" required maxlength="72" autocomplete="current-password" bind:value={actual} />
-	<label for="n">Nueva contraseña (8 o más, letras y números)</label>
-	<input id="n" type="password" required minlength="8" maxlength="72" autocomplete="new-password" bind:value={nueva} />
-	{#if error}<p class="err" role="alert">{error}</p>{/if}
-	<p><button class="btn">Guardar</button></p>
-</form>
+<Header titulo="Mi cuenta" subtitulo="{sesion.usuario.correo} · {sesion.usuario.rol}" />
+<Card style="max-width:440px">
+	<form onsubmit={cambiar}>
+		<h3>Cambiar contraseña</h3>
+		<CampoFormulario id="a" etiqueta="Contraseña actual" tipo="password" required maxlength="72" autocomplete="current-password" bind:value={actual} />
+		<CampoFormulario id="n" etiqueta="Nueva contraseña (8 o más, letras y números)" tipo="password" required minlength="8" maxlength="72" autocomplete="new-password" bind:value={nueva} />
+		{#if error}<p class="err" role="alert">{error}</p>{/if}
+		<p><Boton tipo="submit">Guardar</Boton></p>
+	</form>
+</Card>

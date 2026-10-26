@@ -1,3 +1,8 @@
+<script>
+	import Card from '$lib/components/Card.svelte';
+	import Footer from '$lib/components/Footer.svelte';
+</script>
+
 <svelte:head>
 	<title>Política de privacidad | Conexión Escolar</title>
 	<meta name="description" content="Cómo tratamos los datos personales de organizadores, colegios y estudiantes, según la Ley 1581 de 2012 de Colombia." />
@@ -5,7 +10,8 @@
 
 <div class="auth">
 	<img class="auth-logo" src="/logo.png" alt="Conexión Escolar" width="230" height="157" />
-	<article class="card" style="width:min(760px,100%)">
+	<Card style="width:min(760px,100%)">
+		<article>
 		<h1>Política de tratamiento de datos personales</h1>
 		<p class="mut">Última actualización: octubre de 2026. Conforme a la Ley 1581 de 2012 y el Decreto 1377 de 2013 (habeas data).</p>
 
@@ -30,6 +36,7 @@
 		<h2>7. Conservación</h2>
 		<p>Conservamos los datos mientras la cuenta esté activa o sea necesario para el historial de los eventos, y los suprimimos cuando lo solicites, salvo obligación legal de conservarlos.</p>
 
-		<p class="pie"><a href="/">Inicio</a><a href="/terminos">Términos y condiciones</a></p>
+		<Footer><a href="/">Inicio</a><a href="/terminos">Términos y condiciones</a></Footer>
 	</article>
+	</Card>
 </div>

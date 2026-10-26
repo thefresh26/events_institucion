@@ -1,3 +1,8 @@
+<script>
+	import Card from '$lib/components/Card.svelte';
+	import Footer from '$lib/components/Footer.svelte';
+</script>
+
 <svelte:head>
 	<title>Conexión Escolar | Organiza y matricula colegios</title>
 	<meta name="description" content="Plataforma para organizar eventos escolares: crea eventos, registra colegios y gestiona la inscripción y asistencia de los estudiantes." />
@@ -32,10 +37,10 @@
 <section class="pasos">
 	<h2>Así de simple</h2>
 	<div class="grid g4">
-		<div class="card"><h3>Registra tu organización</h3><p>Un administrador la revisa y la aprueba.</p></div>
-		<div class="card"><h3>Crea tus eventos</h3><p>Define fechas, lugar y cupos de colegios y estudiantes.</p></div>
-		<div class="card"><h3>Invita a los colegios</h3><p>Cada colegio recibe su acceso y se inscribe.</p></div>
-		<div class="card"><h3>Toma asistencia</h3><p>Marca quién asistió y descarga el reporte.</p></div>
+		<Card><h3>Registra tu organización</h3><p>Un administrador la revisa y la aprueba.</p></Card>
+		<Card><h3>Crea tus eventos</h3><p>Define fechas, lugar y cupos de colegios y estudiantes.</p></Card>
+		<Card><h3>Invita a los colegios</h3><p>Cada colegio recibe su acceso y se inscribe.</p></Card>
+		<Card><h3>Toma asistencia</h3><p>Marca quién asistió y descarga el reporte.</p></Card>
 	</div>
-	<p class="pie"><a href="/politica-de-privacidad">Política de privacidad</a><a href="/terminos">Términos y condiciones</a></p>
+	<Footer />
 </section>
