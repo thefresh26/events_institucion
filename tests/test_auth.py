@@ -1,18 +1,21 @@
 import os
-import tempfile
 
-# Base de datos de prueba SQLite: estos tests NO tocan Neon.
-_f = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-os.environ.update(DATABASE_URL=f"sqlite:///{_f.name}", SECRET_KEY="test-secret", COOKIE_SECURE="false")
+# Base PostgreSQL de PRUEBA (los repositorios usan SQL puro de PostgreSQL, SQLite ya no sirve).
+# Se BORRA y se recrea en cada corrida: NUNCA apuntar a Neon. Ej: postgresql://postgres@localhost:5499/pruebas
+assert "neon.tech" not in os.environ["TEST_DATABASE_URL"], "TEST_DATABASE_URL apunta a Neon: los tests borrarían los datos reales"
+os.environ.update(DATABASE_URL=os.environ["TEST_DATABASE_URL"], SECRET_KEY="test-secret", COOKIE_SECURE="false")
 
 from fastapi.testclient import TestClient  # noqa: E402
 
 from app.db.session import Base, SessionLocal, engine  # noqa: E402
-from app.main import app  # noqa: E402
+from main import app  # noqa: E402
 from app.core.security import hash_password  # noqa: E402
 from app.models import (Colegio, CategoriaEvento, Ciudad, Departamento, EstadoEvento, EstadoInscripcion, Grado, Modulo,  # noqa: E402
                         ModuloPorRol, Rol, Usuario)
 
+from sqlalchemy import text  # noqa: E402
+
+Base.metadata.drop_all(engine)
 Base.metadata.create_all(engine)
 with SessionLocal() as db:
     db.add_all([Rol(id=1, nombre="administrador"), Rol(id=2, nombre="organizador"), Rol(id=3, nombre="colegio"),
@@ -22,6 +25,9 @@ with SessionLocal() as db:
                 Usuario(id=1, id_rol=1, correo="admin@x.co", contrasena=hash_password("Admin1234"), nombre="Ad", apellido="Min")])
     db.flush()
     db.add_all([Ciudad(id=1, id_departamento=1, nombre="Bogota"), ModuloPorRol(id_rol=3, id_modulo=1)])
+    db.commit()
+    for t in Base.metadata.tables:  # los id puestos a mano no avanzan la secuencia de PostgreSQL
+        db.execute(text(f"SELECT setval(pg_get_serial_sequence('{t}', 'id'), COALESCE((SELECT MAX(id) FROM {t}), 0) + 1, false)"))
     db.commit()
 
 API = "/api/v1"
