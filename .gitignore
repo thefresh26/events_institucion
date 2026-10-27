@@ -10,3 +10,4 @@ node_modules/
 *.db
 frontend/build/
 frontend/.svelte-kit/
+desktop.ini
