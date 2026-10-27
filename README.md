@@ -24,7 +24,7 @@ practica_1_docker/  practica_3_openwebui_postgres/  practica_4_groq_mcp_toolbox/
 ```
 
 Flujo del backend: **ruta → repositorio → Database**. La conexión usa las variables `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`
-y `DB_PORT` del `.env`, igual que la guía.
+y `DB_PORT` del `.env`, igual que la guía. Opcional: `DB_SSLMODE` (por ejemplo `require` para Neon); si no se define, no se envía.
 
 ## Ejecutar en el computador
 
@@ -74,7 +74,7 @@ API principal: Web Service del repositorio con:
 | Root Directory | `backend` |
 | Build Command | `pip install -r requirements.txt` |
 | Start Command | `uvicorn main:app --host 0.0.0.0 --port 10000` |
-| Variables | `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_PORT`, `SECRET_KEY`, `COOKIE_SECURE=true`, `FORZAR_HTTPS=true`, `FRONTEND_URL` |
+| Variables | `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_PORT`, (opcional `DB_SSLMODE=require`), `SECRET_KEY`, `COOKIE_SECURE=true`, `FORZAR_HTTPS=true`, `FRONTEND_URL` |
 
 (10000 es el puerto que Render usa por defecto.)
 

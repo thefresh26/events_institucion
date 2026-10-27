@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     db_user: str
     db_password: str
     db_port: int = 5432
+    db_sslmode: str = ""  # opcional, igual que en database.py
     secret_key: str
     access_token_expire_minutes: int = 60
     algorithm: str = "HS256"
@@ -26,7 +27,7 @@ class Settings(BaseSettings):
     def database_url(self) -> str:
         # TEMPORAL: solo para el codigo viejo con SQLAlchemy (se borra en la limpieza del backend).
         return (f"postgresql+psycopg2://{quote_plus(self.db_user)}:{quote_plus(self.db_password)}"
-                f"@{self.db_host}:{self.db_port}/{self.db_name}")
+                f"@{self.db_host}:{self.db_port}/{self.db_name}" + (f"?sslmode={self.db_sslmode}" if self.db_sslmode else ""))
 
     @property
     def origenes_permitidos(self) -> list[str]:

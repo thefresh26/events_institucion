@@ -28,8 +28,10 @@ class Database:
         self.user = os.getenv("DB_USER")
         self.password = os.getenv("DB_PASSWORD")
         self.port = os.getenv("DB_PORT")
+        self.sslmode = os.getenv("DB_SSLMODE")  # opcional (ej. "require" para Neon); si no esta, no se envia
 
     def get_connection(self):
+        extra = {"sslmode": self.sslmode} if self.sslmode else {}
         try:
             return psycopg2.connect(
                 host=self.host,
@@ -39,6 +41,7 @@ class Database:
                 port=self.port,
                 cursor_factory=RealDictCursor,
                 connection_factory=ConexionQueSeCierra,
+                **extra,
             )
         except Exception as e:
             print(f"Error de conexión a la BD: {e}")
