@@ -470,6 +470,24 @@ def test_conteo_de_usuarios_por_rol_no_cuenta_eliminados():
     assert contar() == antes                                                   # el eliminado (estado=false) ya no cuenta
 
 
+def test_estado_de_usuario_baja_logica_y_restauracion():
+    adm = admin()
+    uid = adm.post(f"{API}/admin/usuarios", json=dict(correo="estado@x.co", nombre="Elsa", apellido="Paz", rol="administrador")).json()["usuario"]["id"]
+    en_lista = lambda: any(u["id"] == uid for u in adm.get(f"{API}/admin/usuarios").json())
+    # false: borrado logico (la fila sigue, con estado=false y sin acceso)
+    r = adm.patch(f"{API}/admin/usuarios/{uid}/estado", json={"estado": False})
+    assert r.status_code == 200 and r.json() == {"id": uid, "estado": False}
+    assert not en_lista() and sql("SELECT estado, activo FROM usuario WHERE id = %s", uid)[0] == {"estado": False, "activo": False}
+    # true: se restaura (vuelve a la lista); queda inactivo hasta que el administrador lo active
+    r = adm.patch(f"{API}/admin/usuarios/{uid}/estado", json={"estado": True})
+    assert r.status_code == 200 and r.json() == {"id": uid, "estado": True}
+    assert en_lista() and sql("SELECT estado FROM usuario WHERE id = %s", uid)[0]["estado"] is True
+    assert acciones("usuario", uid)[-2:] == ["estado_usuario", "estado_usuario"]
+    # un usuario que no es administrador no puede hacerlo
+    assert organizador("org_estado@x.co", "860000077").patch(f"{API}/admin/usuarios/{uid}/estado", json={"estado": False}).status_code == 403
+    assert en_lista()
+
+
 def test_admin_elimina_usuario():
     adm = admin()
     uid = adm.post(f"{API}/admin/usuarios", json=dict(correo="borrar@x.co", nombre="Beto", apellido="Ruiz", rol="administrador")).json()["usuario"]["id"]
