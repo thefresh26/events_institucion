@@ -1,6 +1,3 @@
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import auth
-
-api_router = APIRouter()
-api_router.include_router(auth.router)
+api_router = APIRouter()  # TEMPORAL: vacio; se borra en la limpieza del backend

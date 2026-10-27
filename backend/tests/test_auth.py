@@ -272,7 +272,8 @@ def test_admin_aprueba_organizadores_y_ve_colegios():
     assert any(c["nit"] == "940000001" and c["activo"] for c in adm.get(f"{API}/admin/colegios").json())
     assert org.get(f"{API}/admin/organizadores").status_code == 403 and org.get(f"{API}/admin/colegios").status_code == 403
     with SessionLocal() as db:
-        assert db.execute(text("SELECT accion FROM auditoria WHERE tabla = 'organizador' AND registro_id = :i"), {"i": o["id"]}).scalar() == "activar_organizador"
+        acciones = db.execute(text("SELECT accion FROM auditoria WHERE tabla = 'organizador' AND registro_id = :i ORDER BY id"), {"i": o["id"]}).scalars().all()
+    assert acciones == ["registro_organizador", "activar_organizador"]
 
 
 def test_resumen_del_administrador():
@@ -284,6 +285,57 @@ def test_resumen_del_administrador():
     org.delete(f"{API}/organizador/eventos/{eid}")                                          # borrado logico: ya no cuenta
     assert adm.get(f"{API}/admin/resumen").json()["eventos_por_estado"]["borrador"] == antes["eventos_por_estado"].get("borrador", 0)
     assert org.get(f"{API}/admin/resumen").status_code == 403
+
+
+def test_seguridad_de_auth():
+    from app.core.config import settings
+    PERFIL = {"id", "correo", "nombre", "apellido", "rol", "modulos", "id_colegio", "id_organizador"}
+    adm = admin()
+    # registro de organizador: queda pendiente (403) hasta que el administrador lo aprueba
+    c = TestClient(app)
+    r = c.post(f"{API}/auth/registro/organizador", json=dict(correo="Seg.Org@x.co", contrasena="Clave1234", nombre="Sara", apellido="Gil",
+                                                             nit="850000001", organizacion_nombre="Fundacion Segura"))
+    assert r.status_code == 201 and "aprobar" in r.json()["mensaje"]
+    assert c.post(f"{API}/auth/registro/organizador", json=dict(correo="seg.org@x.co", contrasena="Clave1234", nombre="Sara", apellido="Gil",
+                                                                nit="850000002", organizacion_nombre="Otra")).status_code == 409   # correo repetido
+    login = lambda correo, clave="Clave1234": TestClient(app).post(f"{API}/auth/login", json={"correo": correo, "contrasena": clave})
+    r = login("seg.org@x.co")
+    assert r.status_code == 403 and r.json()["detail"] == "Tu cuenta está pendiente de aprobación o fue desactivada"
+    oid = next(o["id"] for o in adm.get(f"{API}/admin/organizadores").json() if o["nit"] == "850000001")
+    adm.patch(f"{API}/admin/organizadores/{oid}/activo", json={"activo": True})
+    # login en los 3 roles: misma forma de respuesta que antes, y la cookie con sus atributos de seguridad
+    settings.cookie_secure = True
+    try:
+        r = login("SEG.ORG@x.co")                                                     # el correo no distingue mayusculas
+    finally:
+        settings.cookie_secure = False
+    assert r.status_code == 200 and set(r.json()) == PERFIL | {"access_token", "token_type"}
+    assert r.json()["rol"] == "organizador" and r.json()["id_organizador"] and r.json()["token_type"] == "bearer"
+    galleta = r.headers["set-cookie"].lower()
+    assert "httponly" in galleta and "secure" in galleta and "samesite=lax" in galleta and "path=/" in galleta and "max-age=3600" in galleta
+    assert set(adm.get(f"{API}/auth/me").json()) == PERFIL and adm.get(f"{API}/auth/me").json()["id_colegio"] is None
+    col, id_col = colegio_de(organizador("org97@x.co", "897000001"), "rector97@x.co", "997000001")
+    assert col.get(f"{API}/auth/me").json()["id_colegio"] == id_col
+    # contrasena incorrecta, usuario que no existe: mismo mensaje (no revela si el correo existe)
+    assert login("seg.org@x.co", "Mala12345").json() == login("nadie.nunca@x.co").json() == {"detail": "Correo o contraseña incorrectos"}
+    # cambio de contrasena: con la actual mala 400; bien hecho, la vieja deja de servir
+    org = TestClient(app)
+    org.post(f"{API}/auth/login", json={"correo": "seg.org@x.co", "contrasena": "Clave1234"})
+    assert org.post(f"{API}/auth/cambiar-contrasena", json={"actual": "Mala12345", "nueva": "Nueva12345"}).status_code == 400
+    assert org.post(f"{API}/auth/cambiar-contrasena", json={"actual": "Clave1234", "nueva": "Nueva12345"}).status_code == 204
+    assert login("seg.org@x.co").status_code == 401 and login("seg.org@x.co", "Nueva12345").status_code == 200
+    # desactivado o eliminado: no entra y su sesion abierta deja de servir
+    uid = org.get(f"{API}/auth/me").json()["id"]
+    adm.patch(f"{API}/admin/organizadores/{oid}/activo", json={"activo": False})
+    assert org.get(f"{API}/auth/me").status_code == 401 and login("seg.org@x.co", "Nueva12345").status_code == 403
+    adm.patch(f"{API}/admin/organizadores/{oid}/activo", json={"activo": True})
+    assert org.get(f"{API}/auth/me").status_code == 200
+    assert adm.delete(f"{API}/admin/usuarios/{uid}").status_code == 200
+    assert org.get(f"{API}/auth/me").status_code == 401 and login("seg.org@x.co", "Nueva12345").status_code == 401
+    # cerrar sesion borra la cookie
+    r = adm.post(f"{API}/auth/logout")
+    assert r.status_code == 204 and 'token=""' in r.headers["set-cookie"] and "max-age=0" in r.headers["set-cookie"].lower()
+    assert adm.get(f"{API}/auth/me").status_code == 401
 
 
 def test_csv_no_ejecuta_formulas():
