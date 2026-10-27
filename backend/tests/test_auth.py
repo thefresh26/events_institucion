@@ -473,6 +473,10 @@ def test_todas_las_tablas_tienen_estado_creado_actualizado():
     for t in tablas:
         propias = {f["column_name"]: f["is_nullable"] for f in columnas if f["table_name"] == t}
         assert propias == {"estado": "NO", "creado": "NO", "actualizado": "NO"}, f"{t}: {propias}"
+    defaults = {(f["table_name"], f["column_name"]): f["column_default"] for f in sql(
+        "SELECT table_name, column_name, column_default FROM information_schema.columns WHERE table_schema = 'public'")}
+    assert defaults[("usuario", "activo")] == "true" and defaults[("autorizacion_acudiente", "vigente")] == "true"
+    assert defaults[("inscripcion_estudiante", "asistio")] == "false"
 
 
 def test_creado_actualizado_y_estado_por_defecto():
