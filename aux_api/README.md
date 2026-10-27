@@ -51,11 +51,23 @@ npm start                  # http://localhost:4000/docs
 Comprobado de punta a punta con el backend nuevo: el token del login de la API principal crea y lista PQRS aquí
 (la PQRS queda con el `id_usuario` del token); un token manipulado, vencido o firmado con otra clave responde **401**.
 
+## Seguridad: limitaciones conocidas
+
+- **Token de un usuario eliminado o desactivado.** Esta API solo verifica la **firma y la expiración** del JWT; no consulta la
+  base principal (PostgreSQL). Si el administrador elimina o desactiva a un usuario, la API principal le cierra la sesión de
+  inmediato, pero **aquí su token sigue sirviendo hasta que vence** (60 minutos, `ACCESS_TOKEN_EXPIRE_MINUTES` de la API
+  principal). Lo mismo pasa si le cambian el rol: el rol del token es el que tenía al iniciar sesión. Para reducir esa ventana,
+  bajar `ACCESS_TOKEN_EXPIRE_MINUTES` en la API principal.
+- **CORS en producción.** Si `CORS_ORIGINS` no está definida, la API acepta peticiones de **cualquier origen** (`*`). En
+  producción (Render) es **obligatorio** configurarla con la URL exacta del frontend, por ejemplo
+  `CORS_ORIGINS=https://conexion-escolar.onrender.com` (varias URL separadas por coma, sin `/` al final).
+- **`SECRET_KEY`.** Sin ella (o con el valor de ejemplo `cambia-esto`) el servidor no arranca: debe ser la misma de la API principal.
+
 ## Despliegue (Render + MySQL en la nube)
 
 1. MySQL gratuito: **Aiven for MySQL** (`DB_SSL=insecure`) o **TiDB Cloud Serverless** (`DB_SSL=true`). Crea la base y ejecuta `npm run init-db` (o pega `schema.sql`).
 2. Render → **New Web Service** → este repositorio → **Root Directory: `aux_api`** · Build `npm install` · Start `npm start`.
-3. Variables: `DB_HOST DB_PORT DB_USER DB_PASSWORD DB_NAME DB_SSL`, `SECRET_KEY` (igual a la API principal), `CORS_ORIGINS`.
+3. Variables: `DB_HOST DB_PORT DB_USER DB_PASSWORD DB_NAME DB_SSL`, `SECRET_KEY` (igual a la API principal) y **`CORS_ORIGINS` con la URL del frontend** (si falta, se acepta cualquier origen).
 4. Probar: `https://<servicio>.onrender.com/health` debe responder `{"status":"ok","mysql":"conectado"}`.
 
 ## Pruebas
