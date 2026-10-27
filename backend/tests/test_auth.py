@@ -8,38 +8,53 @@ _u = urlparse(os.environ["TEST_DATABASE_URL"])  # se reparte en las 5 variables 
 os.environ.update(DB_HOST=_u.hostname, DB_PORT=str(_u.port or 5432), DB_NAME=_u.path.lstrip("/"), DB_USER=unquote(_u.username or ""),
                   DB_PASSWORD=unquote(_u.password or ""), SECRET_KEY="test-secret", COOKIE_SECURE="false")
 
+from pathlib import Path  # noqa: E402
+
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app.db.session import Base, SessionLocal, engine  # noqa: E402
 from main import app  # noqa: E402
+from app.core.database import Database  # noqa: E402
 from app.core.security import hash_password  # noqa: E402
-from app.models import (Colegio, CategoriaEvento, Ciudad, Departamento, EstadoEvento, EstadoInscripcion, Grado, Modulo,  # noqa: E402
-                        ModuloPorRol, Rol, Usuario)
 
-from sqlalchemy import text  # noqa: E402
+ESQUEMA = Path(__file__).resolve().parents[1] / "scripts" / "schema.sql"
 
-Base.metadata.drop_all(engine)
-Base.metadata.create_all(engine)
-with SessionLocal() as db:
-    db.add_all([Rol(id=1, nombre="administrador"), Rol(id=2, nombre="organizador"), Rol(id=3, nombre="colegio"),
-                Departamento(id=1, nombre="Cundinamarca"), Grado(id=1, nombre="9"), Modulo(id=1, nombre="panel"), CategoriaEvento(id=1, nombre="Ciencia"),
-                *[EstadoEvento(nombre=n) for n in ("borrador", "pendiente", "publicado", "rechazado", "cerrado")],
-                *[EstadoInscripcion(nombre=n) for n in ("pendiente", "aceptada", "rechazada")],
-                Usuario(id=1, id_rol=1, correo="admin@x.co", contrasena=hash_password("Admin1234"), nombre="Ad", apellido="Min")])
-    db.flush()
-    db.add_all([Ciudad(id=1, id_departamento=1, nombre="Bogota"), ModuloPorRol(id_rol=3, id_modulo=1)])
-    db.commit()
-    for t in Base.metadata.tables:  # los id puestos a mano no avanzan la secuencia de PostgreSQL
-        db.execute(text(f"SELECT setval(pg_get_serial_sequence('{t}', 'id'), COALESCE((SELECT MAX(id) FROM {t}), 0) + 1, false)"))
-    db.commit()
+
+def sql(consulta, *valores):
+    """Consulta directa a la base de prueba (SQL puro, como los repositorios)."""
+    with Database().get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(consulta, valores)
+        return cursor.fetchall() if cursor.description else None
+
+
+def acciones(tabla, registro_id):
+    return [f["accion"] for f in sql("SELECT accion FROM auditoria WHERE tabla = %s AND registro_id = %s ORDER BY id", tabla, registro_id)]
+
+
+# Base nueva en cada corrida: se borra todo y se crea con scripts/schema.sql (el mismo esquema de Neon).
+sql("DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
+sql(ESQUEMA.read_text(encoding="utf-8"))
+sql("""
+    INSERT INTO rol (id, nombre) VALUES (1, 'administrador'), (2, 'organizador'), (3, 'colegio');
+    INSERT INTO departamento (id, nombre) VALUES (1, 'Cundinamarca');
+    INSERT INTO ciudad (id, id_departamento, nombre) VALUES (1, 1, 'Bogota');
+    INSERT INTO grado (id, nombre) VALUES (1, '9');
+    INSERT INTO modulo (id, nombre) VALUES (1, 'panel');
+    INSERT INTO modulo_por_rol (id_rol, id_modulo) VALUES (3, 1);
+    INSERT INTO categoria_evento (id, nombre) VALUES (1, 'Ciencia');
+    INSERT INTO estado_evento (nombre) VALUES ('borrador'), ('pendiente'), ('publicado'), ('rechazado'), ('cerrado');
+    INSERT INTO estado_inscripcion (nombre) VALUES ('pendiente'), ('aceptada'), ('rechazada');
+    INSERT INTO usuario (id, id_rol, correo, contrasena, nombre, apellido, activo) VALUES (1, 1, 'admin@x.co', %s, 'Ad', 'Min', true);
+""", hash_password("Admin1234"))
+for t in [f["table_name"] for f in sql("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")]:
+    # los id puestos a mano no avanzan la secuencia de PostgreSQL
+    sql(f"SELECT setval(pg_get_serial_sequence('{t}', 'id'), COALESCE((SELECT MAX(id) FROM {t}), 0) + 1, false)")
 
 API = "/api/v1"
 
 
 def aprobar(correo):
-    with SessionLocal() as db:
-        db.query(Usuario).filter_by(correo=correo).one().activo = True
-        db.commit()
+    sql("UPDATE usuario SET activo = true WHERE correo = %s", correo)
 
 
 def organizador(correo, nit):
@@ -88,16 +103,14 @@ def test_aislamiento_entre_actores():
     assert col2.delete(f"{API}/colegio/estudiantes/{e['id']}").status_code == 404    # IDOR bloqueado
     assert org2.patch(f"{API}/organizador/colegios/{id1}/activo", json={"activo": False}).status_code == 404
     assert org1.patch(f"{API}/organizador/colegios/{id1}/activo", json={"activo": True}).json()["activo"] is True
-    with SessionLocal() as db:                                                         # registrar y activar quedan auditados
-        acciones = db.execute(text("SELECT accion FROM auditoria WHERE tabla = 'colegio' AND registro_id = :i ORDER BY id"), {"i": id1}).scalars().all()
-    assert acciones == ["registrar_colegio", "activar_colegio"]
+    hechas = acciones("colegio", id1)                                              # quedan auditadas
+    assert hechas == ["registrar_colegio", "activar_colegio"]
     assert org2.get(f"{API}/organizador/colegios").json()[0]["nit"] == "900000003"   # solo los suyos
     assert col1.get(f"{API}/organizador/colegios").status_code == 403                # un colegio no es organizador
     assert TestClient(app).get(f"{API}/colegio/estudiantes").status_code == 401      # sin sesion
     assert col1.delete(f"{API}/colegio/estudiantes/{e['id']}").status_code == 204    # el dueño si puede retirarlo
-    with SessionLocal() as db:                                                         # crear y retirar quedan auditados
-        acciones = db.execute(text("SELECT accion FROM auditoria WHERE tabla = 'estudiante' AND registro_id = :i"), {"i": e["id"]}).scalars().all()
-    assert sorted(acciones) == ["crear_estudiante", "retirar_estudiante"]
+    hechas = acciones("estudiante", e["id"])                                              # quedan auditadas
+    assert sorted(hechas) == ["crear_estudiante", "retirar_estudiante"]
 
 
 def test_validaciones():
@@ -176,11 +189,9 @@ def test_eventos_editar_eliminar_cerrar():
     assert adm.post(f"{API}/admin/eventos/{eid}/cerrar").status_code == 409
     assert org.delete(f"{API}/organizador/eventos/{eid}").status_code == 204                  # cerrado: si
     assert all(e["id"] != eid for e in org.get(f"{API}/organizador/eventos").json())
-    with SessionLocal() as db:
-        acciones = db.execute(text("SELECT accion FROM auditoria WHERE tabla = 'evento' AND registro_id = :i ORDER BY id"), {"i": eid}).scalars().all()
-    assert acciones == ["crear_evento", "enviar_evento", "evento_publicado", "evento_cerrado", "eliminar_evento"]
-    with SessionLocal() as db:                                                                  # la fila sigue: borrado logico
-        assert db.execute(text("SELECT estado FROM evento WHERE id = :i"), {"i": eid}).scalar() is False
+    hechas = acciones("evento", eid)                                              # quedan auditadas
+    assert hechas == ["crear_evento", "enviar_evento", "evento_publicado", "evento_cerrado", "eliminar_evento"]
+    assert sql("SELECT estado FROM evento WHERE id = %s", eid)[0]["estado"] is False                 # la fila sigue: borrado logico
 
 
 def test_flujo_de_evento_completo():
@@ -271,9 +282,8 @@ def test_admin_aprueba_organizadores_y_ve_colegios():
     colegio_de(org, "rector95@x.co", "940000001")
     assert any(c["nit"] == "940000001" and c["activo"] for c in adm.get(f"{API}/admin/colegios").json())
     assert org.get(f"{API}/admin/organizadores").status_code == 403 and org.get(f"{API}/admin/colegios").status_code == 403
-    with SessionLocal() as db:
-        acciones = db.execute(text("SELECT accion FROM auditoria WHERE tabla = 'organizador' AND registro_id = :i ORDER BY id"), {"i": o["id"]}).scalars().all()
-    assert acciones == ["registro_organizador", "activar_organizador"]
+    hechas = acciones("organizador", o["id"])                                              # quedan auditadas
+    assert hechas == ["registro_organizador", "activar_organizador"]
 
 
 def test_resumen_del_administrador():
@@ -449,19 +459,20 @@ def test_organizador_elimina_colegio():
     id2 = colegio_de(org1, "rector31@x.co", "930000002")[1]
     assert org1.delete(f"{API}/organizador/colegios/{id2}").status_code == 204           # baja logica
     assert all(c["id"] != id2 for c in org1.get(f"{API}/organizador/colegios").json())
-    with SessionLocal() as db:                                                           # la fila sigue en la tabla, con estado=False
-        assert db.get(Colegio, id2).estado is False
+    assert sql("SELECT estado FROM colegio WHERE id = %s", id2)[0]["estado"] is False      # la fila sigue en la tabla, con estado=False
     assert org1.delete(f"{API}/organizador/colegios/{id2}").status_code == 404           # ya eliminado
     assert org1.delete(f"{API}/organizador/colegios/{id1}").status_code == 204           # con inscripciones tambien: se conserva el historial
 
 
 # ---------------- Taller: estado / creado / actualizado, JWT Bearer, CRUD de catalogos ----------------
 def test_todas_las_tablas_tienen_estado_creado_actualizado():
-    for t in Base.metadata.tables.values():
-        for c in ("estado", "creado", "actualizado"):
-            assert c in t.c, f"{t.name} no tiene {c}"
-        assert t.c.estado.nullable is False and t.c.creado.nullable is False and t.c.actualizado.nullable is False
-    assert len(Base.metadata.tables) >= 12
+    columnas = sql("""SELECT table_name, column_name, is_nullable FROM information_schema.columns
+                      WHERE table_schema = 'public' AND column_name IN ('estado', 'creado', 'actualizado')""")
+    tablas = {f["table_name"] for f in sql("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")}
+    assert len(tablas) == 18
+    for t in tablas:
+        propias = {f["column_name"]: f["is_nullable"] for f in columnas if f["table_name"] == t}
+        assert propias == {"estado": "NO", "creado": "NO", "actualizado": "NO"}, f"{t}: {propias}"
 
 
 def test_creado_actualizado_y_estado_por_defecto():

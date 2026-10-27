@@ -13,6 +13,7 @@ backend/                      API principal (FastAPI + PostgreSQL)
   app/repositories/<modulo>_repo.py   SQL puro con %s
   app/api/rutas_<modulo>.py   APIRouter de cada módulo
   app/frontend_dist/          frontend compilado que sirve FastAPI en producción
+  scripts/schema.sql          esquema SQL de las 18 tablas (+ trigger actualizado)
   scripts/  tests/  requirements.txt  runtime.txt  .env.example
 frontend/                     SvelteKit
   src/lib/components/         Navbar, Header, Footer, Card, Boton, CampoFormulario, Mensaje, Insignia, SinDatos, Modal
@@ -38,7 +39,8 @@ copy .env.example .env          # completa DB_HOST, DB_NAME, DB_USER, DB_PASSWOR
 uvicorn main:app --reload       # http://localhost:8000  ·  Swagger en /docs
 ```
 
-Base nueva: `python -m scripts.inicializar_bd` y luego `python -m scripts.crear_admin` (también desde `backend/`).
+Base nueva: `python -m scripts.inicializar_bd` (crea las tablas con `scripts/schema.sql` y los datos base) y luego
+`python -m scripts.crear_admin` (también desde `backend/`).
 
 **Frontend** (desde `frontend/`, con el backend corriendo):
 
