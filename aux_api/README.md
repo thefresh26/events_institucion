@@ -57,4 +57,17 @@ npm start                  # http://localhost:4000/docs
 
 ## Pruebas
 
-`npm test` (necesita un MySQL con la base creada y las variables `DB_*`).
+`npm test` (necesita un MySQL con la base creada y las variables `DB_*`). **Nunca contra la base de producción (Aiven):**
+las pruebas crean y eliminan registros. Con un MySQL local desechable en Docker (PowerShell, desde `aux_api/`):
+
+```
+docker run -d --rm --name aux-mysql-prueba -p 127.0.0.1:3307:3306 -e MYSQL_ALLOW_EMPTY_PASSWORD=yes mysql:8.4
+docker exec aux-mysql-prueba mysql -uroot -e "CREATE DATABASE conexion_escolar_aux CHARACTER SET utf8mb4"
+$env:DB_HOST="127.0.0.1"; $env:DB_PORT="3307"; $env:DB_USER="root"; $env:DB_PASSWORD=""; $env:DB_SSL="false"
+$env:DB_NAME="conexion_escolar_aux"; $env:SECRET_KEY="clave-solo-pruebas"
+npm run init-db
+npm test
+docker stop aux-mysql-prueba     # se borra solo (--rm)
+```
+
+`init-db` crea las tablas pero no la base: en la nube la base ya viene creada; en local se crea con el `CREATE DATABASE` de arriba.
