@@ -43,6 +43,16 @@ test('salud, documentacion y JWT', async () => {
   assert.equal((await api('GET', '/api/aux/pqrs', ADMIN)).status, 200);
 });
 
+test('sin SECRET_KEY (o con la de ejemplo) el servidor no arranca y lo explica', () => {
+  const { spawnSync } = require('node:child_process');
+  for (const valor of ['', 'cambia-esto']) {
+    const r = spawnSync(process.execPath, ['server.js'], { cwd: require('node:path').join(__dirname, '..'), timeout: 10000,
+      env: { ...process.env, SECRET_KEY: valor, PORT: '0' }, encoding: 'utf8' });
+    assert.equal(r.status, 1, `con SECRET_KEY="${valor}" debio salir con codigo 1`);
+    assert.match(r.stderr, /falta SECRET_KEY/);
+  }
+});
+
 test('tipos de PQRS: CRUD, unico, baja logica y restaurar', async () => {
   assert.equal((await api('POST', '/api/aux/tipos-pqrs', COLEGIO, { nombre: 'X' })).status, 403);
   const c = await api('POST', '/api/aux/tipos-pqrs', ADMIN, { nombre: 'Tipo ' + sufijo });
