@@ -7,5 +7,6 @@ ollama pull qwen2.5:1.5b-instruct
 ollama pull qwen3:4b-thinking-2507-q4_K_M
 ollama list
 
-# Comando del profesor (Open WebUI en http://localhost:3000/)
+# Open WebUI en http://localhost:3000/ - desde la carpeta ia/:  docker compose up -d
+# (docker-compose.yml es este mismo comando del profesor):
 docker run -d -p 3000:8080 --add-host=host.docker.internal:host-gateway -v open-webui:/app/backend/data --name open-webui --restart always ghcr.io/open-webui/open-webui:main

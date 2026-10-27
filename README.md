@@ -21,7 +21,11 @@ frontend/                     SvelteKit
   src/routes/                 una carpeta por sección
 aux_api/                      API auxiliar (Express + MySQL)
 docs/                         documentos del proyecto
-practica_1_docker/  practica_3_openwebui_postgres/  practica_4_groq_mcp_toolbox/   prácticas del curso
+ia/                           prácticas de IA sobre la base del proyecto (solo lectura), ver ia/README.md
+  docker-compose.yml          Práctica 1: Open WebUI en Docker + Ollama
+  text_to_sql/                Práctica 3: text-to-SQL con Open WebUI + Ollama
+  groq_mcp/                   Práctica 4: Groq + MCP Toolbox + mcpo
+  ia_lectura.sql              usuario de Neon de solo lectura para la IA
 ```
 
 Flujo del backend: **ruta → repositorio → Database**. La conexión usa las variables `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`

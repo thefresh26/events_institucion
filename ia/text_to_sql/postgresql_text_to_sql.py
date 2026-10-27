@@ -1,6 +1,6 @@
 """
 title: PostgreSQL Text-to-SQL
-description: Ejecuta consultas SELECT de solo lectura contra PostgreSQL (base de datos "prueba")
+description: Ejecuta consultas SELECT de solo lectura contra la base de Conexión Escolar (Neon, usuario ia_lectura)
 """
 
 import psycopg2
@@ -9,10 +9,10 @@ from pydantic import BaseModel, Field
 
 class Tools:
     class Valves(BaseModel):
-        host: str = Field(default="localhost", description="Host de Postgres")
+        host: str = Field(default="", description="Host de Neon (Connect -> Parameters only)")
         port: int = Field(default=5432)
-        dbname: str = Field(default="biblioteca_db2")
-        user: str = Field(default="postgres")
+        dbname: str = Field(default="neondb")
+        user: str = Field(default="ia_lectura", description="Usuario de solo lectura (ia/ia_lectura.sql)")
         password: str = Field(
             default="",
             description="Configura esto en el panel de Valves, no aquí",

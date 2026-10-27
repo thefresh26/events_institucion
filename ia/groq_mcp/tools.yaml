@@ -1,0 +1,95 @@
+kind: sources
+name: conexion-escolar
+type: postgres
+host: tu-host.neon.tech
+port: 5432
+database: neondb
+user: ia_lectura
+password: tu_contraseña_de_ia_lectura
+---
+kind: tools
+name: eventos_publicados
+type: postgres-sql
+source: conexion-escolar
+description: Lista los eventos publicados con su fecha, lugar y cuántos cupos de colegios les quedan.
+statement: |
+  SELECT e.nombre, e.fecha_inicio, e.lugar, e.cupo_colegios,
+         e.cupo_colegios - (SELECT count(*) FROM inscripcion i JOIN estado_inscripcion ei ON ei.id = i.id_estado
+                            WHERE i.id_evento = e.id AND i.estado = true AND ei.nombre <> 'rechazada') AS cupos_libres
+  FROM evento e JOIN estado_evento ee ON ee.id = e.id_estado
+  WHERE e.estado = true AND ee.nombre = 'publicado'
+  ORDER BY e.fecha_inicio;
+---
+kind: tools
+name: colegios_inscritos_por_evento
+type: postgres-sql
+source: conexion-escolar
+description: Cuenta cuántos colegios están inscritos (inscripción no rechazada) en cada evento.
+statement: |
+  SELECT e.nombre AS evento, count(i.id) AS colegios_inscritos
+  FROM evento e
+  LEFT JOIN inscripcion i ON i.id_evento = e.id AND i.estado = true
+       AND i.id_estado <> (SELECT id FROM estado_inscripcion WHERE nombre = 'rechazada')
+  WHERE e.estado = true
+  GROUP BY e.nombre ORDER BY colegios_inscritos DESC;
+---
+kind: tools
+name: inscripciones_por_estado
+type: postgres-sql
+source: conexion-escolar
+description: Cuenta las inscripciones pendientes, aceptadas y rechazadas.
+statement: |
+  SELECT ei.nombre AS estado, count(i.id) AS total
+  FROM estado_inscripcion ei LEFT JOIN inscripcion i ON i.id_estado = ei.id AND i.estado = true
+  WHERE ei.estado = true
+  GROUP BY ei.nombre;
+---
+kind: tools
+name: colegios_por_ciudad
+type: postgres-sql
+source: conexion-escolar
+description: Cuenta cuántos colegios hay registrados en una ciudad específica.
+parameters:
+  - name: ciudad
+    type: string
+    description: Nombre de la ciudad a consultar (por ejemplo Bogotá).
+statement: |
+  SELECT count(*) AS total
+  FROM colegio c JOIN ciudad ci ON ci.id = c.id_ciudad
+  WHERE c.estado = true AND ci.nombre = $1;
+---
+kind: tools
+name: estudiantes_de_evento
+type: postgres-sql
+source: conexion-escolar
+description: Lista los estudiantes de los colegios aceptados en un evento, con el documento enmascarado y si asistieron.
+parameters:
+  - name: evento
+    type: string
+    description: Nombre exacto del evento.
+statement: |
+  SELECT c.nombre AS colegio, es.nombre || ' ' || es.apellido AS estudiante, es.documento, ie.asistio
+  FROM evento e
+  JOIN inscripcion i ON i.id_evento = e.id AND i.estado = true
+  JOIN estado_inscripcion ei ON ei.id = i.id_estado AND ei.nombre = 'aceptada'
+  JOIN colegio c ON c.id = i.id_colegio
+  JOIN inscripcion_estudiante ie ON ie.id_inscripcion = i.id AND ie.estado = true
+  JOIN estudiante_enmascarado es ON es.id = ie.id_estudiante
+  WHERE e.estado = true AND e.nombre = $1
+  ORDER BY c.nombre, estudiante;
+---
+kind: tools
+name: asistencia_por_evento
+type: postgres-sql
+source: conexion-escolar
+description: Cuenta cuántos estudiantes aceptados asistieron y cuántos no, en cada evento.
+statement: |
+  SELECT e.nombre AS evento,
+         count(*) FILTER (WHERE ie.asistio) AS asistieron,
+         count(*) FILTER (WHERE NOT ie.asistio) AS no_asistieron
+  FROM evento e
+  JOIN inscripcion i ON i.id_evento = e.id AND i.estado = true
+  JOIN estado_inscripcion ei ON ei.id = i.id_estado AND ei.nombre = 'aceptada'
+  JOIN inscripcion_estudiante ie ON ie.id_inscripcion = i.id AND ie.estado = true
+  WHERE e.estado = true
+  GROUP BY e.nombre;

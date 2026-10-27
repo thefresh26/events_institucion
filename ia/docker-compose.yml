@@ -1,0 +1,20 @@
+# Practica 1 del profesor: Open WebUI en Docker, conectado a Ollama instalado en el computador.
+# Es el mismo comando del profesor, escrito para docker compose:
+#   docker run -d -p 3000:8080 --add-host=host.docker.internal:host-gateway \
+#     -v open-webui:/app/backend/data --name open-webui --restart always ghcr.io/open-webui/open-webui:main
+# Uso (desde la carpeta ia/):  docker compose up -d   ->  http://localhost:3000
+services:
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    ports:
+      - "3000:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # para llegar a Ollama (puerto 11434) y a mcpo (puerto 8000) del computador
+    volumes:
+      - open-webui:/app/backend/data
+    restart: always
+
+volumes:
+  open-webui:
+    name: open-webui   # el mismo volumen que crea el docker run del profesor (se conservan cuentas y chats)

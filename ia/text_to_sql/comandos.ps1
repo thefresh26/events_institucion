@@ -1,5 +1,5 @@
 # PRÁCTICA 3 - Open WebUI con Ollama y PostgreSQL (Python 3.11 o 3.12)
-# Ejecutar estos comandos desde esta carpeta (practica_3_openwebui_postgres).
+# Ejecutar estos comandos desde esta carpeta (ia/text_to_sql).
 
 # 1) Ollama (https://ollama.com/) ya instalado
 ollama --version
@@ -23,8 +23,8 @@ open-webui serve
 #    - Crear la cuenta de administrador.
 #    - Espacio de Trabajo -> Herramientas -> Nueva Herramienta:
 #      pegar el contenido de postgresql_text_to_sql.py y Guardar.
-#    - Engranaje de la herramienta (Válvulas): host localhost, puerto 5432,
-#      base biblioteca_db2, usuario postgres y la contraseña de tu PostgreSQL.
+#    - Engranaje de la herramienta (Válvulas): host de Neon, puerto 5432,
+#      base neondb, usuario ia_lectura y su contraseña (creado con ia/ia_lectura.sql).
 #    - Espacio de Trabajo -> Modelos -> editar el modelo: pegar
 #      prompt_del_sistema.txt y activar la herramienta postgres_tool.
-#    - Nuevo chat con ese modelo y preguntar, por ejemplo, las tablas de la base.
+#    - Nuevo chat con ese modelo y preguntar, por ejemplo: ¿cuántos colegios están inscritos en cada evento?

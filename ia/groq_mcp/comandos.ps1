@@ -4,7 +4,7 @@
 
 # ---------- PREPARACIÓN (una sola vez) ----------
 # 1. Descargar toolbox.exe (windows/amd64) de https://github.com/googleapis/mcp-toolbox/releases a C:\asistente-bd
-# 2. Copiar tools.yaml de esta carpeta a C:\asistente-bd y editar database / user / password.
+# 2. Copiar tools.yaml de esta carpeta a C:\asistente-bd y editar host (Neon) y password (la de ia_lectura, ver ia/ia_lectura.sql).
 #    Nota: con Toolbox 1.15.0 el archivo usa "kind: source" y "kind: tool" (singular).
 # 3. Instalar mcpo con versiones compatibles:
 #    pip install mcpo
