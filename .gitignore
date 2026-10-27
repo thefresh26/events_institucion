@@ -2,6 +2,7 @@
 .env.*
 !.env.example
 venv/
+myvenv/
 __pycache__/
 node_modules/
 *.log
