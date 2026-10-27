@@ -66,7 +66,7 @@ class Tools:
             dbname=self.valves.dbname,
             user=self.valves.user,
             password=self.valves.password,
-            options="-c statement_timeout=5000",
+            sslmode="require",
         )
         try:
             with conn.cursor() as cur:
