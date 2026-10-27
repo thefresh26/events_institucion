@@ -48,6 +48,9 @@ npm start                  # http://localhost:4000/docs
 1. `POST {API_PRINCIPAL}/api/v1/auth/login` → copiar `access_token`.
 2. En `/docs` de esta API → **Authorize** → pegar el token.
 
+Comprobado de punta a punta con el backend nuevo: el token del login de la API principal crea y lista PQRS aquí
+(la PQRS queda con el `id_usuario` del token); un token manipulado, vencido o firmado con otra clave responde **401**.
+
 ## Despliegue (Render + MySQL en la nube)
 
 1. MySQL gratuito: **Aiven for MySQL** (`DB_SSL=insecure`) o **TiDB Cloud Serverless** (`DB_SSL=true`). Crea la base y ejecuta `npm run init-db` (o pega `schema.sql`).

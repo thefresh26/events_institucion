@@ -37,6 +37,9 @@ test('salud, documentacion y JWT', async () => {
   assert.equal((await api('GET', '/api/aux/pqrs', ADMIN.slice(0, -3) + 'abc')).status, 401);              // firma alterada
   assert.equal((await api('GET', '/api/aux/pqrs', token(1, 'administrador', { expiresIn: -10 }))).status, 401);   // vencido
   assert.equal((await api('GET', '/api/aux/pqrs', jwt.sign({ sub: '1', rol: 'administrador' }, 'otra-clave'))).status, 401);
+  const [cab, , firma] = COLEGIO.split('.');                                                               // contenido cambiado sin volver a firmar:
+  const subido = Buffer.from(JSON.stringify({ sub: '7', rol: 'administrador', exp: Math.floor(Date.now() / 1000) + 3600 })).toString('base64url');
+  assert.equal((await api('GET', '/api/aux/pqrs', `${cab}.${subido}.${firma}`)).status, 401);              // colegio que se "sube" a administrador
   assert.equal((await api('GET', '/api/aux/pqrs', ADMIN)).status, 200);
 });
 
