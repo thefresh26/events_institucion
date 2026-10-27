@@ -1,9 +1,15 @@
-from pydantic import field_validator
+from urllib.parse import quote_plus
+
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    database_url: str
+    # Base de datos: las mismas 5 variables que usa app/core/database.py (guia del profesor)
+    db_host: str
+    db_name: str
+    db_user: str
+    db_password: str
+    db_port: int = 5432
     secret_key: str
     access_token_expire_minutes: int = 60
     algorithm: str = "HS256"
@@ -14,12 +20,13 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = ".env"
+        extra = "ignore"  # el .env puede traer variables de otras partes
 
-    @field_validator("database_url")
-    @classmethod
-    def usar_psycopg3(cls, v: str) -> str:
-        # Neon entrega "postgresql://..."; SQLAlchemy lo leeria como psycopg2 (no instalado).
-        return v.replace("postgresql://", "postgresql+psycopg://", 1) if v.startswith("postgresql://") else v
+    @property
+    def database_url(self) -> str:
+        # TEMPORAL: solo para el codigo viejo con SQLAlchemy (se borra en la limpieza del backend).
+        return (f"postgresql+psycopg2://{quote_plus(self.db_user)}:{quote_plus(self.db_password)}"
+                f"@{self.db_host}:{self.db_port}/{self.db_name}")
 
     @property
     def origenes_permitidos(self) -> list[str]:

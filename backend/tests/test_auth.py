@@ -1,9 +1,12 @@
 import os
+from urllib.parse import unquote, urlparse
 
 # Base PostgreSQL de PRUEBA (los repositorios usan SQL puro de PostgreSQL, SQLite ya no sirve).
 # Se BORRA y se recrea en cada corrida: NUNCA apuntar a Neon. Ej: postgresql://postgres@localhost:5499/pruebas
 assert "neon.tech" not in os.environ["TEST_DATABASE_URL"], "TEST_DATABASE_URL apunta a Neon: los tests borrarían los datos reales"
-os.environ.update(DATABASE_URL=os.environ["TEST_DATABASE_URL"], SECRET_KEY="test-secret", COOKIE_SECURE="false")
+_u = urlparse(os.environ["TEST_DATABASE_URL"])  # se reparte en las 5 variables DB_* que lee app/core/database.py
+os.environ.update(DB_HOST=_u.hostname, DB_PORT=str(_u.port or 5432), DB_NAME=_u.path.lstrip("/"), DB_USER=unquote(_u.username or ""),
+                  DB_PASSWORD=unquote(_u.password or ""), SECRET_KEY="test-secret", COOKIE_SECURE="false")
 
 from fastapi.testclient import TestClient  # noqa: E402
 

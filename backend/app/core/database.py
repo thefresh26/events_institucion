@@ -1,16 +1,45 @@
-import psycopg
-from psycopg.rows import dict_row
+import os
+import psycopg2
+from psycopg2.extensions import connection
+from psycopg2.extras import RealDictCursor
+from dotenv import load_dotenv
 
-from app.core.config import settings
+# Carga las variables del archivo .env al entorno de Python
+load_dotenv()
+
+
+class ConexionQueSeCierra(connection):
+    """Igual a la conexion normal de psycopg2, pero al salir de un "with" ademas la CIERRA.
+    (psycopg2 solo hace commit/rollback al salir del with; sin esto quedarian conexiones abiertas en Neon.)
+    Uso en los repositorios:  with self.db.get_connection() as conn:  -> commit si todo sale bien,
+    rollback si hay error, y siempre close()."""
+
+    def __exit__(self, tipo, valor, traza):
+        try:
+            return super().__exit__(tipo, valor, traza)
+        finally:
+            self.close()
 
 
 class Database:
     def __init__(self):
-        # Una sola variable DATABASE_URL (Neon / Render) en vez de DB_HOST, DB_NAME, ... de la guia.
-        # config.py le agrega "+psycopg" para SQLAlchemy; psycopg puro necesita la URL original.
-        self.url = settings.database_url.replace("postgresql+psycopg://", "postgresql://", 1)
+        self.host = os.getenv("DB_HOST")
+        self.database = os.getenv("DB_NAME")
+        self.user = os.getenv("DB_USER")
+        self.password = os.getenv("DB_PASSWORD")
+        self.port = os.getenv("DB_PORT")
 
     def get_connection(self):
-        # dict_row = RealDictCursor de psycopg2: cada fila llega como diccionario {"columna": valor}.
-        # Usada con "with": hace commit si todo sale bien, rollback si hay error, y siempre cierra.
-        return psycopg.connect(self.url, row_factory=dict_row)
+        try:
+            return psycopg2.connect(
+                host=self.host,
+                database=self.database,
+                user=self.user,
+                password=self.password,
+                port=self.port,
+                cursor_factory=RealDictCursor,
+                connection_factory=ConexionQueSeCierra,
+            )
+        except Exception as e:
+            print(f"Error de conexión a la BD: {e}")
+            return None

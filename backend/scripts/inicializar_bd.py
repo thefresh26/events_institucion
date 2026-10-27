@@ -1,5 +1,5 @@
 """Prepara una base de datos NUEVA (p. ej. un proyecto Neon vacio). Idempotente.
-Uso (desde la carpeta backend/, con DATABASE_URL en el entorno o en .env):
+Uso (desde la carpeta backend/, con DB_HOST, DB_NAME, DB_USER, DB_PASSWORD y DB_PORT en el .env):
     python -m scripts.inicializar_bd
 Crea las 18 tablas, el trigger de `actualizado` y los datos base (roles, modulos, catalogos).
 Luego crea el administrador con:  python -m scripts.crear_admin"""

@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
-from psycopg.errors import IntegrityError
+from psycopg2 import IntegrityError
 
 from app.api.deps import colegio_actual, organizador_actual
 from app.api.rutas_eventos import evento_del_organizador, no_encontrado

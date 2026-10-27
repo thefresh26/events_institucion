@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
-from psycopg.errors import IntegrityError
+from psycopg2 import IntegrityError
 
 from app.api.deps import colegio_actual
 from app.core.auditoria import ip_de
