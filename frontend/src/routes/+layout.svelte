@@ -50,7 +50,8 @@
 	}
 </script>
 
-{#if sesion.cargando}
+{#if sesion.cargando || (!sesion.usuario && !PUBLICAS.includes($page.url.pathname))}
+	<!-- sin sesion en una pagina protegida: no se dibuja (no pide datos ni muestra avisos) mientras se va al login -->
 	<div class="centro mut" role="status"><div class="cargando"></div>Cargando…</div>
 {:else if sesion.usuario && !['/login', '/registro'].includes($page.url.pathname)}
 	<div class="app">
