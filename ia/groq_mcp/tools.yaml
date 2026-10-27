@@ -1,4 +1,7 @@
-kind: sources
+# Formato para MCP Toolbox 1.15.0: "kind: source" y "kind: tool" en SINGULAR.
+# Diferencia con la guia del profesor: su tools.yaml usa "kind: sources" / "kind: tools" (plural), que es el
+# formato de versiones anteriores de Toolbox; con la 1.15.0 el plural no carga las herramientas.
+kind: source
 name: conexion-escolar
 type: postgres
 host: tu-host.neon.tech
@@ -7,7 +10,7 @@ database: neondb
 user: ia_lectura
 password: tu_contraseña_de_ia_lectura
 ---
-kind: tools
+kind: tool
 name: eventos_publicados
 type: postgres-sql
 source: conexion-escolar
@@ -20,7 +23,7 @@ statement: |
   WHERE e.estado = true AND ee.nombre = 'publicado'
   ORDER BY e.fecha_inicio;
 ---
-kind: tools
+kind: tool
 name: colegios_inscritos_por_evento
 type: postgres-sql
 source: conexion-escolar
@@ -33,7 +36,7 @@ statement: |
   WHERE e.estado = true
   GROUP BY e.nombre ORDER BY colegios_inscritos DESC;
 ---
-kind: tools
+kind: tool
 name: inscripciones_por_estado
 type: postgres-sql
 source: conexion-escolar
@@ -44,7 +47,7 @@ statement: |
   WHERE ei.estado = true
   GROUP BY ei.nombre;
 ---
-kind: tools
+kind: tool
 name: colegios_por_ciudad
 type: postgres-sql
 source: conexion-escolar
@@ -58,7 +61,7 @@ statement: |
   FROM colegio c JOIN ciudad ci ON ci.id = c.id_ciudad
   WHERE c.estado = true AND ci.nombre = $1;
 ---
-kind: tools
+kind: tool
 name: estudiantes_de_evento
 type: postgres-sql
 source: conexion-escolar
@@ -78,7 +81,7 @@ statement: |
   WHERE e.estado = true AND e.nombre = $1
   ORDER BY c.nombre, estudiante;
 ---
-kind: tools
+kind: tool
 name: asistencia_por_evento
 type: postgres-sql
 source: conexion-escolar
