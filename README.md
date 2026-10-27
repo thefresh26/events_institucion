@@ -8,7 +8,7 @@ Plataforma web para organizar eventos de colegios: los **organizadores** publica
 ```
 backend/                      API principal (FastAPI + PostgreSQL)
   main.py                     crea la app y conecta cada módulo (include_router)
-  app/core/database.py        clase Database.get_connection()  (psycopg 3)
+  app/core/database.py        clase Database.get_connection()  (psycopg2 + RealDictCursor)
   app/models/<modulo>.py      modelos Pydantic, uno por módulo
   app/repositories/<modulo>_repo.py   SQL puro con %s
   app/api/rutas_<modulo>.py   APIRouter de cada módulo
@@ -23,8 +23,8 @@ docs/                         documentos del proyecto
 practica_1_docker/  practica_3_openwebui_postgres/  practica_4_groq_mcp_toolbox/   prácticas del curso
 ```
 
-Flujo del backend: **ruta → repositorio → Database**. Diferencias con la guía: se usa **psycopg 3** (no psycopg2) y una sola variable
-**`DATABASE_URL`** (en vez de `DB_HOST`, `DB_NAME`, …).
+Flujo del backend: **ruta → repositorio → Database**. La conexión usa las variables `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`
+y `DB_PORT` del `.env`, igual que la guía.
 
 ## Ejecutar en el computador
 
@@ -34,7 +34,7 @@ Flujo del backend: **ruta → repositorio → Database**. Diferencias con la gu�
 cd backend
 python -m venv venv && venv\Scripts\activate
 pip install -r requirements.txt
-copy .env.example .env          # completa DATABASE_URL y SECRET_KEY
+copy .env.example .env          # completa DB_HOST, DB_NAME, DB_USER, DB_PASSWORD, DB_PORT y SECRET_KEY
 uvicorn main:app --reload       # http://localhost:8000  ·  Swagger en /docs
 ```
 
@@ -67,9 +67,16 @@ npm run build
 
 ## Despliegue (Render)
 
-API principal: Web Service · **Root Directory `backend`** · Build `pip install -r requirements.txt` ·
-Start `uvicorn main:app --host 0.0.0.0 --port $PORT` · variables `DATABASE_URL`, `SECRET_KEY`, `COOKIE_SECURE=true`,
-`FORZAR_HTTPS=true`, `FRONTEND_URL`.
+API principal: Web Service del repositorio con:
+
+| Campo | Valor |
+|---|---|
+| Root Directory | `backend` |
+| Build Command | `pip install -r requirements.txt` |
+| Start Command | `uvicorn main:app --host 0.0.0.0 --port 10000` |
+| Variables | `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_PORT`, `SECRET_KEY`, `COOKIE_SECURE=true`, `FORZAR_HTTPS=true`, `FRONTEND_URL` |
+
+(10000 es el puerto que Render usa por defecto.)
 
 API auxiliar: otro Web Service del mismo repositorio con **Root Directory `aux_api`** · Build `npm install` · Start `npm start` ·
 variables `DB_HOST DB_PORT DB_USER DB_PASSWORD DB_NAME DB_SSL`, `SECRET_KEY` (**la misma** de la API principal) y `CORS_ORIGINS`. Ver `aux_api/README.md`.
