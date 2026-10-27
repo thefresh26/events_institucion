@@ -3,7 +3,7 @@
 // Si la sesion vencio, el servidor responde 401 y llega aqui como ApiError con estado 401.
 export const URL_BASE = '/api/v1';
 
-export class ApiError extends Error {
+class ApiError extends Error {
 	constructor(mensaje, estado) {
 		super(mensaje);
 		this.estado = estado;

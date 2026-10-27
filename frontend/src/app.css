@@ -96,7 +96,7 @@ tbody tr { transition:background .2s; } tbody tr:hover { background:var(--hov); 
 
 .chk { display:flex; gap:10px; align-items:center; padding:10px 12px; border:1.5px solid var(--bd); border-radius:10px; margin-bottom:6px; font-weight:400; margin-top:0; cursor:pointer; transition:border-color .2s, background .2s; }
 .chk:hover { border-color:var(--ac); background:var(--acl); } .chk input { width:auto; accent-color:var(--ac); }
-.err { color:var(--err); margin:10px 0 0; font-weight:500; } .ok { color:#0f6a3e; }
+.err { color:var(--err); margin:10px 0 0; font-weight:500; }
 .note { font-size:13px; color:var(--notetx); background:var(--acl); border-left:4px solid var(--ac); border-radius:10px; padding:11px 14px; margin-top:14px; }
 .toast { position:fixed; bottom:22px; right:22px; background:var(--sb); color:#fff; padding:13px 18px; border-radius:14px; z-index:80; max-width:min(380px,90vw); box-shadow:0 18px 40px -12px #000a; border-left:5px solid var(--hot); animation:toast .45s var(--ease) both; }
 .toast.error { background:var(--err); border-left-color:#fecaca; }
@@ -200,7 +200,6 @@ tbody tr { transition:background .2s; } tbody tr:hover { background:var(--hov); 
 :root[data-tema='dark'] .publicado, :root[data-tema='dark'] .aceptada { background:#0f3a2a; color:#6fe0a6; }
 :root[data-tema='dark'] .rechazado, :root[data-tema='dark'] .rechazada { background:#40181a; color:#ff9a94; }
 :root[data-tema='dark'] .cerrado { background:#12304f; color:#8fc3f5; }
-:root[data-tema='dark'] .ok { color:#6fe0a6; }
 :root[data-tema='dark'] .chip { color:#f0d58a; border-color:#5a4a1c; }
 :root[data-tema='dark'] .auth-logo, :root[data-tema='dark'] .logo-grande img { background:#fff; border-radius:24px; padding:16px; }
 :root[data-tema='dark'] .marca img { background:#fff; border-radius:12px; padding:4px; }

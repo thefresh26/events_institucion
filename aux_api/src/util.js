@@ -32,4 +32,4 @@ const uno = async (sql, params) => (await q(sql, params))[0];
 
 const slug = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 140);
 
-module.exports = { HttpError, bad, texto, entero, soloCampos, id, q, uno, slug };
+module.exports = { HttpError, texto, entero, soloCampos, id, q, uno, slug };
