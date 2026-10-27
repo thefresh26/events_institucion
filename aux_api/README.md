@@ -77,6 +77,7 @@ las pruebas crean y eliminan registros. Con un MySQL local desechable en Docker 
 
 ```
 docker run -d --rm --name aux-mysql-prueba -p 127.0.0.1:3307:3306 -e MYSQL_ALLOW_EMPTY_PASSWORD=yes mysql:8.4
+while (-not (docker logs aux-mysql-prueba 2>&1 | ForEach-Object { "$_" } | Select-String 'ready for connections.*port: 3306' -Quiet)) { Start-Sleep 2 }
 docker exec aux-mysql-prueba mysql -uroot -e "CREATE DATABASE conexion_escolar_aux CHARACTER SET utf8mb4"
 $env:DB_HOST="127.0.0.1"; $env:DB_PORT="3307"; $env:DB_USER="root"; $env:DB_PASSWORD=""; $env:DB_SSL="false"
 $env:DB_NAME="conexion_escolar_aux"; $env:SECRET_KEY="clave-solo-pruebas"
@@ -85,4 +86,5 @@ npm test
 docker stop aux-mysql-prueba     # se borra solo (--rm)
 ```
 
-`init-db` crea las tablas pero no la base: en la nube la base ya viene creada; en local se crea con el `CREATE DATABASE` de arriba.
+El `while` espera al servidor definitivo: al arrancar por primera vez, MySQL levanta uno temporal y se reinicia
+(si se crea la base antes, falla con "Connection lost"). `init-db` crea las tablas pero no la base: en la nube la base ya viene creada; en local se crea con el `CREATE DATABASE` de arriba.
