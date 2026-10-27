@@ -1,6 +1,5 @@
 <script>
 	import Card from '$lib/components/Card.svelte';
-	import Footer from '$lib/components/Footer.svelte';
 </script>
 
 <svelte:head>
@@ -42,5 +41,4 @@
 		<Card><h3>Invita a los colegios</h3><p>Cada colegio recibe su acceso y se inscribe.</p></Card>
 		<Card><h3>Toma asistencia</h3><p>Marca quién asistió y descarga el reporte.</p></Card>
 	</div>
-	<Footer />
 </section>

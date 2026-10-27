@@ -1,6 +1,5 @@
 <script>
 	import Card from '$lib/components/Card.svelte';
-	import Footer from '$lib/components/Footer.svelte';
 </script>
 
 <svelte:head>
@@ -33,7 +32,6 @@
 		<h2>6. Ley aplicable</h2>
 		<p>Estos términos se rigen por las leyes de la República de Colombia. Contacto: [CORREO DE CONTACTO].</p>
 
-		<Footer><a href="/">Inicio</a><a href="/politica-de-privacidad">Política de privacidad</a></Footer>
 	</article>
 	</Card>
 </div>

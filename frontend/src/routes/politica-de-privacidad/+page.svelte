@@ -1,6 +1,5 @@
 <script>
 	import Card from '$lib/components/Card.svelte';
-	import Footer from '$lib/components/Footer.svelte';
 </script>
 
 <svelte:head>
@@ -36,7 +35,6 @@
 		<h2>7. Conservación</h2>
 		<p>Conservamos los datos mientras la cuenta esté activa o sea necesario para el historial de los eventos, y los suprimimos cuando lo solicites, salvo obligación legal de conservarlos.</p>
 
-		<Footer><a href="/">Inicio</a><a href="/terminos">Términos y condiciones</a></Footer>
 	</article>
 	</Card>
 </div>

@@ -5,7 +5,6 @@
 	import Card from '$lib/components/Card.svelte';
 	import CampoFormulario from '$lib/components/CampoFormulario.svelte';
 	import Boton from '$lib/components/Boton.svelte';
-	import Footer from '$lib/components/Footer.svelte';
 
 	let correo = $state('');
 	let contrasena = $state('');
@@ -42,7 +41,6 @@
 			{#if error}<p class="err" role="alert">{error}</p>{/if}
 			<p><Boton tipo="submit" disabled={enviando}>{enviando ? 'Entrando…' : 'Entrar'}</Boton></p>
 			<p class="mut">¿Eres organizador y aún no tienes cuenta? <a href="/registro">Regístrate</a>. Los colegios reciben su acceso del organizador.</p>
-			<Footer><a href="/politica-de-privacidad">Privacidad</a><a href="/terminos">Términos</a></Footer>
 		</form>
 	</Card>
 </div>

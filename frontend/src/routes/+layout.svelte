@@ -7,6 +7,7 @@
 	import { iniciarTema } from '$lib/tema.svelte.js';
 	import Navbar from '$lib/components/Navbar.svelte';
 	import Mensaje from '$lib/components/Mensaje.svelte';
+	import Footer from '$lib/components/Footer.svelte';
 
 	let { children } = $props();
 
@@ -54,13 +55,21 @@
 	<!-- sin sesion en una pagina protegida: no se dibuja (no pide datos ni muestra avisos) mientras se va al login -->
 	<div class="centro mut" role="status"><div class="cargando"></div>Cargando…</div>
 {:else if sesion.usuario && !['/login', '/registro'].includes($page.url.pathname)}
+	<!-- con sesion: barra lateral + columna (contenido arriba, pie al fondo) -->
 	<div class="app">
 		<Navbar usuario={sesion.usuario} {menu} rutaActual={$page.url.pathname} onsalir={cerrarSesion} />
-		<main>{@render children()}</main>
+		<div class="contenedor-app">
+			<main>{@render children()}</main>
+			<Footer />
+		</div>
 	</div>
 {:else}
-	<Navbar />
-	{@render children()}
+	<!-- sin sesion: como el layout de mi-proyecto (Navbar, contenido, Footer) -->
+	<div class="contenedor-app">
+		<Navbar />
+		<div class="contenido">{@render children()}</div>
+		<Footer />
+	</div>
 {/if}
 
 <Mensaje />
