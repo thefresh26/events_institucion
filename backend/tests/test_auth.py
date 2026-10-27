@@ -113,6 +113,38 @@ def test_aislamiento_entre_actores():
     assert sorted(hechas) == ["crear_estudiante", "retirar_estudiante"]
 
 
+def test_estudiantes_obtener_y_editar():
+    org1, org2, adm = organizador("org98@x.co", "898000001"), organizador("org99b@x.co", "898000002"), admin()
+    col1, _ = colegio_de(org1, "rector98@x.co", "998000001")
+    col2, _ = colegio_de(org2, "rector99@x.co", "998000002")
+    e = col1.post(f"{API}/colegio/estudiantes", json={**EST, "documento": "1234567890"}).json()
+    url = f"{API}/colegio/estudiantes/{e['id']}"
+    # obtener: el propio si (documento enmascarado), el ajeno 404
+    r = col1.get(url)
+    assert r.status_code == 200 and r.json() == {"id": e["id"], "nombre": "Valentina", "apellido": "Rios", "documento": "123*****90", "grado": "9"}
+    assert col2.get(url).status_code == 404 and col1.get(f"{API}/colegio/estudiantes/99999").status_code == 404
+    # editar: cambia los datos, sale enmascarado, refresca "actualizado" y queda auditado
+    cambio = dict(nombre="Valeria", apellido="Rios Paz", documento="1234567899", id_grado=1)
+    r = col1.put(url, json=cambio)
+    assert r.status_code == 200 and r.json()["nombre"] == "Valeria" and r.json()["documento"] == "123*****99"
+    fila = sql("SELECT documento, creado, actualizado FROM estudiante WHERE id = %s", e["id"])[0]
+    assert fila["documento"] == "1234567899" and fila["actualizado"] > fila["creado"]
+    assert "editar_estudiante" in acciones("estudiante", e["id"])
+    # editar el de otro colegio: 404 y no cambia nada
+    assert col2.put(url, json={**cambio, "nombre": "Intruso"}).status_code == 404
+    assert col1.get(url).json()["nombre"] == "Valeria"
+    # grado inexistente o dado de baja: 422; campos extra: 422
+    assert col1.put(url, json={**cambio, "id_grado": 999}).status_code == 422
+    gid = adm.post(f"{API}/admin/catalogos/grados", json={"nombre": "Grado de baja"}).json()["id"]
+    adm.delete(f"{API}/admin/catalogos/grados/{gid}")
+    r = col1.put(url, json={**cambio, "id_grado": gid})
+    assert r.status_code == 422 and r.json()["detail"] == "Grado inválido"
+    assert col1.put(url, json={**cambio, "id_colegio": 2}).status_code == 422
+    # documento repetido dentro del mismo colegio: 409
+    otro = col1.post(f"{API}/colegio/estudiantes", json={**EST, "documento": "5555555555"}).json()
+    assert col1.put(f"{API}/colegio/estudiantes/{otro['id']}", json=cambio).status_code == 409
+
+
 def test_validaciones():
     c = TestClient(app)
     base = dict(correo="z@x.co", contrasena="Clave1234", nombre="Org", apellido="Uno", nit="800000009", organizacion_nombre="Fundacion Z")

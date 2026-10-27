@@ -75,6 +75,65 @@ npm run build
 # reemplazar el contenido de backend/app/frontend_dist por el de frontend/build
 ```
 
+## Rutas de la API principal (prefijo `/api/v1`)
+
+Generadas de la app; la documentación interactiva está en `/docs`.
+
+| Módulo | Método | Ruta |
+|---|---|---|
+| Catálogos | `GET` | `/catalogos/categorias` |
+| Catálogos | `GET` | `/catalogos/ciudades` |
+| Catálogos | `GET` | `/catalogos/grados` |
+| Catálogos (CRUD admin) | `GET` | `/admin/catalogos/{tabla}` |
+| Catálogos (CRUD admin) | `POST` | `/admin/catalogos/{tabla}` |
+| Catálogos (CRUD admin) | `GET` | `/admin/catalogos/{tabla}/{registro_id}` |
+| Catálogos (CRUD admin) | `PUT` | `/admin/catalogos/{tabla}/{registro_id}` |
+| Catálogos (CRUD admin) | `DELETE` | `/admin/catalogos/{tabla}/{registro_id}` |
+| Catálogos (CRUD admin) | `PATCH` | `/admin/catalogos/{tabla}/{registro_id}/estado` |
+| Estudiantes (colegio) | `GET` | `/colegio/estudiantes` |
+| Estudiantes (colegio) | `POST` | `/colegio/estudiantes` |
+| Estudiantes (colegio) | `GET` | `/colegio/estudiantes/{estudiante_id}` |
+| Estudiantes (colegio) | `PUT` | `/colegio/estudiantes/{estudiante_id}` |
+| Estudiantes (colegio) | `DELETE` | `/colegio/estudiantes/{estudiante_id}` |
+| Eventos (organizador) | `GET` | `/organizador/eventos` |
+| Eventos (organizador) | `POST` | `/organizador/eventos` |
+| Eventos (organizador) | `PUT` | `/organizador/eventos/{evento_id}` |
+| Eventos (organizador) | `DELETE` | `/organizador/eventos/{evento_id}` |
+| Eventos (organizador) | `POST` | `/organizador/eventos/{evento_id}/enviar` |
+| Eventos (colegio) | `GET` | `/colegio/eventos` |
+| Eventos (administrador) | `GET` | `/admin/eventos` |
+| Eventos (administrador) | `POST` | `/admin/eventos/{evento_id}/cerrar` |
+| Eventos (administrador) | `PATCH` | `/admin/eventos/{evento_id}/decision` |
+| Inscripciones (organizador) | `GET` | `/organizador/inscripciones` |
+| Inscripciones (organizador) | `PATCH` | `/organizador/inscripciones/{inscripcion_id}` |
+| Inscripciones (organizador) | `GET` | `/organizador/eventos/{evento_id}/asistencia` |
+| Inscripciones (organizador) | `PUT` | `/organizador/eventos/{evento_id}/asistencia` |
+| Inscripciones (organizador) | `GET` | `/organizador/eventos/{evento_id}/reporte/colegios.csv` |
+| Inscripciones (organizador) | `GET` | `/organizador/eventos/{evento_id}/reporte/estudiantes.csv` |
+| Inscripciones (colegio) | `GET` | `/colegio/inscripciones` |
+| Inscripciones (colegio) | `POST` | `/colegio/eventos/{evento_id}/inscripcion` |
+| Usuarios y roles (administrador) | `GET` | `/admin/roles` |
+| Usuarios y roles (administrador) | `GET` | `/admin/usuarios` |
+| Usuarios y roles (administrador) | `POST` | `/admin/usuarios` |
+| Usuarios y roles (administrador) | `PATCH` | `/admin/usuarios/{usuario_id}` |
+| Usuarios y roles (administrador) | `DELETE` | `/admin/usuarios/{usuario_id}` |
+| Usuarios y roles (administrador) | `PUT` | `/admin/roles/{rol_id}/modulos` |
+| Usuarios y roles (administrador) | `PATCH` | `/admin/usuarios/{usuario_id}/estado` |
+| Usuarios y roles (administrador) | `POST` | `/admin/usuarios/{usuario_id}/restablecer` |
+| Colegios (organizador) | `GET` | `/organizador/colegios` |
+| Colegios (organizador) | `POST` | `/organizador/colegios` |
+| Colegios (organizador) | `DELETE` | `/organizador/colegios/{colegio_id}` |
+| Colegios (organizador) | `PATCH` | `/organizador/colegios/{colegio_id}/activo` |
+| Colegios (administrador) | `GET` | `/admin/colegios` |
+| Organizadores (administrador) | `GET` | `/admin/organizadores` |
+| Organizadores (administrador) | `PATCH` | `/admin/organizadores/{organizador_id}/activo` |
+| Administrador | `GET` | `/admin/resumen` |
+| Autenticación | `POST` | `/auth/cambiar-contrasena` |
+| Autenticación | `POST` | `/auth/login` |
+| Autenticación | `POST` | `/auth/logout` |
+| Autenticación | `GET` | `/auth/me` |
+| Autenticación | `POST` | `/auth/registro/organizador` |
+
 ## Despliegue (Render)
 
 API principal: Web Service del repositorio con:
