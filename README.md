@@ -27,6 +27,10 @@ practica_1_docker/  practica_3_openwebui_postgres/  practica_4_groq_mcp_toolbox/
 Flujo del backend: **ruta → repositorio → Database**. La conexión usa las variables `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`
 y `DB_PORT` del `.env`, igual que la guía. Opcional: `DB_SSLMODE` (por ejemplo `require` para Neon); si no se define, no se envía.
 
+**Base de datos ya existente en Neon:** pegar `backend/scripts/migracion_defaults.sql` en el SQL Editor de Neon
+(valores por defecto de `usuario.activo`, `autorizacion_acudiente.vigente` e `inscripcion_estudiante.asistio`;
+seguro y repetible).
+
 ## Ejecutar en el computador
 
 **Backend** (desde `backend/`):
@@ -82,3 +86,9 @@ API principal: Web Service del repositorio con:
 
 API auxiliar: otro Web Service del mismo repositorio con **Root Directory `aux_api`** · Build `npm install` · Start `npm start` ·
 variables `DB_HOST DB_PORT DB_USER DB_PASSWORD DB_NAME DB_SSL`, `SECRET_KEY` (**la misma** de la API principal) y `CORS_ORIGINS`. Ver `aux_api/README.md`.
+
+## Mejoras futuras
+
+- **Índices** (hoy solo existen los de llaves primarias y `UNIQUE`). Varias consultas filtran por columnas sin índice:
+  `evento.id_organizador`, `evento.id_estado`, `inscripcion.id_colegio`, `colegio.id_organizador`, `usuario.id_rol`
+  y `auditoria (tabla, registro_id)`. Con los volúmenes actuales no se nota; agregarlos si los datos crecen.
