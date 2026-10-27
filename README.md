@@ -31,6 +31,10 @@ ia/                           prácticas de IA sobre la base del proyecto (solo 
 Flujo del backend: **ruta → repositorio → Database**. La conexión usa las variables `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`
 y `DB_PORT` del `.env`, igual que la guía. Opcional: `DB_SSLMODE` (por ejemplo `require` para Neon); si no se define, no se envía.
 
+**Base creada antes del Parcial I:** `backend/scripts/migracion_taller.sql` agrega `estado`, `creado`, `actualizado` y el trigger a las
+18 tablas (renombra las columnas viejas sin perder datos); se pega una sola vez en el SQL Editor de Neon, es repetible y no hace
+falta en una base nueva (allí `schema.sql` ya trae todo).
+
 **Base de datos ya existente en Neon:** pegar `backend/scripts/migracion_defaults.sql` en el SQL Editor de Neon
 (valores por defecto de `usuario.activo`, `autorizacion_acudiente.vigente` e `inscripcion_estudiante.asistio`;
 seguro y repetible).
