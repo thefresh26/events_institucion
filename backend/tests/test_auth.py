@@ -130,6 +130,10 @@ def test_estudiantes_obtener_y_editar():
     fila = sql("SELECT documento, creado, actualizado FROM estudiante WHERE id = %s", e["id"])[0]
     assert fila["documento"] == "1234567899" and fila["actualizado"] > fila["creado"]
     assert "editar_estudiante" in acciones("estudiante", e["id"])
+    sin_doc = {k: v for k, v in cambio.items() if k != "documento"}                        # sin documento: se conserva
+    assert col1.put(url, json={**sin_doc, "nombre": "Valery"}).json()["documento"] == "123*****99"
+    assert sql("SELECT documento FROM estudiante WHERE id = %s", e["id"])[0]["documento"] == "1234567899"
+    col1.put(url, json=cambio)
     # editar el de otro colegio: 404 y no cambia nada
     assert col2.put(url, json={**cambio, "nombre": "Intruso"}).status_code == 404
     assert col1.get(url).json()["nombre"] == "Valeria"

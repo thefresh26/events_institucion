@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -19,9 +21,10 @@ class EstudianteNuevo(BaseModel):
 
 
 class EstudianteEdita(BaseModel):
-    """Cuerpo de PUT: reemplaza los datos del estudiante (la autorizacion del acudiente no cambia)."""
+    """Cuerpo de PUT: reemplaza los datos del estudiante (la autorizacion del acudiente no cambia).
+    documento es opcional: el servidor nunca lo entrega completo, asi que si no se envia se conserva el actual."""
     model_config = {"str_strip_whitespace": True, "extra": "forbid"}
     nombre: str = Field(min_length=2, max_length=100)
     apellido: str = Field(min_length=2, max_length=100)
-    documento: str = Field(pattern=r"^\d{5,15}$")
+    documento: Optional[str] = Field(None, pattern=r"^\d{5,15}$")
     id_grado: int = Field(gt=0)

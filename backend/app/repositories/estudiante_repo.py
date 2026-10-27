@@ -55,7 +55,7 @@ class EstudianteRepository:
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(f"""
-                UPDATE estudiante SET nombre = %s, apellido = %s, documento = %s, id_grado = %s, actualizado = now()
+                UPDATE estudiante SET nombre = %s, apellido = %s, documento = COALESCE(%s, documento), id_grado = %s, actualizado = now()
                 WHERE id = %s AND id_colegio = %s AND estado = true RETURNING {COLUMNAS};
             """, (estudiante.nombre, estudiante.apellido, estudiante.documento, estudiante.id_grado, estudiante_id, id_colegio))
             actualizado = cursor.fetchone()
