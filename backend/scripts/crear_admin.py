@@ -1,4 +1,4 @@
-"""Crea el primer administrador. Uso (desde la carpeta del proyecto, con el .env listo):
+"""Crea el primer administrador. Uso (desde la carpeta backend/, con el .env listo):
     python -m scripts.crear_admin
 La contrasena se pide por teclado (no queda en el historial ni en el chat)."""
 import getpass

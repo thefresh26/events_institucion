@@ -1,0 +1,26 @@
+kind: sources
+name: mi-postgres
+type: postgres
+host: 127.0.0.1
+port: 5432
+database: mi_base_de_datos
+user: mi_usuario
+password: mi_contraseña
+---
+kind: tools
+name: contar_clientes
+type: postgres-sql
+source: mi-postgres
+description: Cuenta cuántos clientes están registrados en total.
+statement: SELECT COUNT(*) AS total_clientes FROM clientes;
+---
+kind: tools
+name: clientes_por_ciudad
+type: postgres-sql
+source: mi-postgres
+description: Cuenta cuántos clientes hay en una ciudad específica.
+parameters:
+  - name: ciudad
+    type: string
+    description: Nombre de la ciudad a consultar.
+statement: SELECT COUNT(*) AS total FROM clientes WHERE ciudad = $1;
