@@ -275,6 +275,17 @@ def test_admin_aprueba_organizadores_y_ve_colegios():
         assert db.execute(text("SELECT accion FROM auditoria WHERE tabla = 'organizador' AND registro_id = :i"), {"i": o["id"]}).scalar() == "activar_organizador"
 
 
+def test_resumen_del_administrador():
+    adm, org = admin(), organizador("org96@x.co", "896000001")
+    antes = adm.get(f"{API}/admin/resumen").json()
+    assert set(antes) == {"eventos_por_estado", "colegios", "organizadores", "organizadores_pendientes", "inscripciones"}
+    eid = org.post(f"{API}/organizador/eventos", json=evento_json()).json()["id"]
+    assert adm.get(f"{API}/admin/resumen").json()["eventos_por_estado"]["borrador"] == antes["eventos_por_estado"].get("borrador", 0) + 1
+    org.delete(f"{API}/organizador/eventos/{eid}")                                          # borrado logico: ya no cuenta
+    assert adm.get(f"{API}/admin/resumen").json()["eventos_por_estado"]["borrador"] == antes["eventos_por_estado"].get("borrador", 0)
+    assert org.get(f"{API}/admin/resumen").status_code == 403
+
+
 def test_csv_no_ejecuta_formulas():
     assert csv_seguro("=HYPERLINK(\"http://malo\")") == "'=HYPERLINK(\"http://malo\")"
     assert csv_seguro("Ana") == "Ana" and csv_seguro(None) == ""
@@ -302,10 +313,9 @@ def test_frontend_servido_con_cabeceras_de_seguridad():
 
 # ---------------- Administracion de usuarios y roles ----------------
 def test_admin_gestiona_usuarios_y_roles():
-    from app.db.seed import asegurar_modulos_admin
-    with SessionLocal() as db:
-        asegurar_modulos_admin(db)
-        asegurar_modulos_admin(db)  # idempotente
+    from app.repositories.admin_repo import AdminRepository
+    AdminRepository().asegurar_modulos_admin()
+    AdminRepository().asegurar_modulos_admin()  # idempotente
     adm = admin()
     assert {"usuarios", "roles"} <= set(adm.get(f"{API}/auth/me").json()["modulos"])
     # un organizador no entra a estas rutas

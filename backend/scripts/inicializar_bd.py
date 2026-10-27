@@ -5,7 +5,7 @@ Crea las 18 tablas, el trigger de `actualizado` y los datos base (roles, modulos
 Luego crea el administrador con:  python -m scripts.crear_admin"""
 from sqlalchemy import text
 
-from app.db.seed import asegurar_modulos_admin
+from app.repositories.admin_repo import AdminRepository
 from app.db.session import Base, SessionLocal, engine
 from app.models import (CategoriaEvento, Ciudad, Departamento, EstadoEvento, EstadoInscripcion, Grado, Modulo,
                         ModuloPorRol, Rol)
@@ -63,7 +63,7 @@ def main() -> None:
             for c in ciudades:
                 obtener(db, Ciudad, id_departamento=d.id, nombre=c)
         db.commit()
-        asegurar_modulos_admin(db)  # usuarios y roles para el administrador
+    AdminRepository().asegurar_modulos_admin()  # usuarios y roles para el administrador
     print("Base lista: 18 tablas, triggers y datos base. Ahora: python -m scripts.crear_admin")
 
 

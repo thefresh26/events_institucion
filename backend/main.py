@@ -8,7 +8,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import rutas_catalogos, rutas_estudiantes, rutas_eventos, rutas_inscripciones, rutas_usuarios, rutas_colegios, rutas_organizadores
+from app.api import rutas_admin, rutas_catalogos, rutas_estudiantes, rutas_eventos, rutas_inscripciones, rutas_usuarios, rutas_colegios, rutas_organizadores
 from app.api.v1.router import api_router
 from app.core.config import settings
 
@@ -18,10 +18,7 @@ log = logging.getLogger("events")
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     try:  # modulos del panel de administracion (idempotente); un fallo aqui no debe tumbar el servidor
-        from app.db.seed import asegurar_modulos_admin
-        from app.db.session import SessionLocal
-        with SessionLocal() as db:
-            asegurar_modulos_admin(db)
+        rutas_admin.repo.asegurar_modulos_admin()
     except Exception:
         log.exception("No se pudieron asegurar los modulos de administracion")
     yield
@@ -80,6 +77,7 @@ app.include_router(rutas_usuarios.router, prefix="/api/v1")
 app.include_router(rutas_colegios.router, prefix="/api/v1")
 app.include_router(rutas_colegios.router_admin, prefix="/api/v1")
 app.include_router(rutas_organizadores.router, prefix="/api/v1")
+app.include_router(rutas_admin.router, prefix="/api/v1")
 
 # Frontend compilado (SvelteKit adapter-static), cuando exista.
 DIST = Path(__file__).resolve().parent / "app" / "frontend_dist"
