@@ -43,13 +43,6 @@ class ContactoBase(_Base):
         return v
 
 
-class ColegioNuevo(ContactoBase):
-    """Lo envia el ORGANIZADOR. No lleva contrasena: el servidor genera una temporal."""
-    colegio_nombre: str = Field(min_length=3, max_length=150)
-    id_ciudad: int = Field(gt=0)
-    direccion: str | None = Field(default=None, max_length=200)
-
-
 class RegistroOrganizador(ContactoBase):
     contrasena: str = Field(min_length=8, max_length=72)  # 72 = limite de bcrypt
     _clave = field_validator("contrasena")(lambda cls, v: clave_fuerte(v))
@@ -66,10 +59,6 @@ class CambioContrasena(_Base):
     actual: str = Field(min_length=1, max_length=72)
     nueva: str = Field(min_length=8, max_length=72)
     _clave = field_validator("nueva")(lambda cls, v: clave_fuerte(v))
-
-
-class ActivoIn(_Base):
-    activo: bool
 
 
 class EstadoIn(_Base):

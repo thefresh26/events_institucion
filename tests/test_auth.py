@@ -84,6 +84,10 @@ def test_aislamiento_entre_actores():
     assert col2.get(f"{API}/colegio/estudiantes").json() == []                       # no ve estudiantes ajenos
     assert col2.delete(f"{API}/colegio/estudiantes/{e['id']}").status_code == 404    # IDOR bloqueado
     assert org2.patch(f"{API}/organizador/colegios/{id1}/activo", json={"activo": False}).status_code == 404
+    assert org1.patch(f"{API}/organizador/colegios/{id1}/activo", json={"activo": True}).json()["activo"] is True
+    with SessionLocal() as db:                                                         # registrar y activar quedan auditados
+        acciones = db.execute(text("SELECT accion FROM auditoria WHERE tabla = 'colegio' AND registro_id = :i ORDER BY id"), {"i": id1}).scalars().all()
+    assert acciones == ["registrar_colegio", "activar_colegio"]
     assert org2.get(f"{API}/organizador/colegios").json()[0]["nit"] == "900000003"   # solo los suyos
     assert col1.get(f"{API}/organizador/colegios").status_code == 403                # un colegio no es organizador
     assert TestClient(app).get(f"{API}/colegio/estudiantes").status_code == 401      # sin sesion
@@ -249,6 +253,23 @@ def test_cupo_lleno():
     with ThreadPoolExecutor(4) as hilos:
         codigos = list(hilos.map(lambda n: inscribir(n, eid2).status_code, range(3, 7)))
     assert sorted(codigos) == [201, 201, 409, 409]
+
+
+def test_admin_aprueba_organizadores_y_ve_colegios():
+    adm = admin()
+    r = TestClient(app).post(f"{API}/auth/registro/organizador", json=dict(correo="pend@x.co", contrasena="Clave1234", nombre="Pia",
+                                                                      apellido="Paz", nit="840000001", organizacion_nombre="Fundacion Pend"))
+    assert r.status_code == 201
+    o = next(o for o in adm.get(f"{API}/admin/organizadores").json() if o["nit"] == "840000001")
+    assert o["activo"] is False                                                           # nace pendiente
+    assert adm.patch(f"{API}/admin/organizadores/{o['id']}/activo", json={"activo": True}).json() == {"id": o["id"], "activo": True}
+    assert adm.patch(f"{API}/admin/organizadores/99999/activo", json={"activo": True}).status_code == 404
+    org = organizador("org95@x.co", "840000002")
+    colegio_de(org, "rector95@x.co", "940000001")
+    assert any(c["nit"] == "940000001" and c["activo"] for c in adm.get(f"{API}/admin/colegios").json())
+    assert org.get(f"{API}/admin/organizadores").status_code == 403 and org.get(f"{API}/admin/colegios").status_code == 403
+    with SessionLocal() as db:
+        assert db.execute(text("SELECT accion FROM auditoria WHERE tabla = 'organizador' AND registro_id = :i"), {"i": o["id"]}).scalar() == "activar_organizador"
 
 
 def test_csv_no_ejecuta_formulas():
