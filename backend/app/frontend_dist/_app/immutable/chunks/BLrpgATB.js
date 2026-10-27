@@ -1,0 +1,1 @@
+import{p as a}from"./DMvJmjRe.js";const n=()=>a("/admin/resumen"),r=()=>a("/admin/organizadores"),e=(o,s)=>a(`/admin/organizadores/${o}/activo`,{method:"PATCH",body:{activo:s}}),t=()=>a("/admin/colegios");export{r as a,e as b,t as l,n as o};

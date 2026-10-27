@@ -1,0 +1,1 @@
+import{p as a}from"./DMvJmjRe.js";const n=(o,t)=>a("/auth/login",{method:"POST",body:{correo:o,contrasena:t}}),s=()=>a("/auth/logout",{method:"POST"}),e=()=>a("/auth/me"),i=o=>a("/auth/registro/organizador",{method:"POST",body:o}),c=(o,t)=>a("/auth/cambiar-contrasena",{method:"POST",body:{actual:o,nueva:t}});export{s as a,c,n as i,e as o,i as r};
