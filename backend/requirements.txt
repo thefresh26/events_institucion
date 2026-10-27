@@ -1,11 +1,18 @@
+# Las de la guia del profesor
 fastapi
-uvicorn[standard]
-sqlalchemy
-psycopg[binary]
-passlib[bcrypt]
-bcrypt==4.0.1
-PyJWT
-pydantic-settings
-email-validator
-httpx
+uvicorn
+pydantic
+psycopg2-binary
+python-dotenv
+
+# Extras que el proyecto usa
+pydantic-settings   # app/core/config.py: SECRET_KEY, cookies, CORS... desde el .env
+email-validator     # EmailStr en los modelos (correos validos)
+PyJWT               # app/core/security.py: token de sesion (JWT)
+passlib[bcrypt]     # app/core/security.py: hash de contrasenas
+bcrypt==4.0.1       # version compatible con passlib
+sqlalchemy          # TEMPORAL: codigo viejo (auth, deps, admin, scripts); se quita en la limpieza del backend
+
+# Pruebas (tests/)
+httpx               # lo necesita el TestClient de FastAPI
 pytest
