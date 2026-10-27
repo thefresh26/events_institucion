@@ -39,6 +39,18 @@ falta en una base nueva (allí `schema.sql` ya trae todo).
 (valores por defecto de `usuario.activo`, `autorizacion_acudiente.vigente` e `inscripcion_estudiante.asistio`;
 seguro y repetible).
 
+### Qué se adaptó de la guía y por qué
+
+- **Igual que la guía:** clase `Database` con las variables `DB_*`; repositorios con SQL puro y `%s`; un `APIRouter` por módulo
+  conectado con `include_router`; 10 componentes en `lib/components`; un `api_<modulo>.js` por módulo en `lib/services`; una carpeta
+  por sección en `routes/`; Navbar + contenido + Footer en `+layout.svelte`; `index.js` y `.npmrc` igual que mi-proyecto.
+- **Adaptado a este proyecto:** la guía tiene un CRUD de estudiantes; aquí cada estudiante pertenece a un colegio, por eso las rutas
+  son `/api/v1/colegio/estudiantes` y el documento se devuelve enmascarado.
+- **Por qué `main.py` es más grande y los services usan `peticion()`:** el proyecto tiene roles (administrador, organizador, colegio)
+  y sesión por cookie. `main.py` agrega seguridad, CORS, el frontend compilado y 14 routers; `peticion()` en `api_base.js` envía la
+  cookie y maneja los errores en un solo lugar.
+- **Agregado fuera de la guía:** `aux_api/` (Express + MySQL), `ia/` (prácticas 1, 3 y 4) y las pruebas (`backend/tests/`, `aux_api/test/`).
+
 ## Ejecutar en el computador
 
 **Backend** (desde `backend/`):
