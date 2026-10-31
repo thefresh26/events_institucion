@@ -6,7 +6,7 @@
 	import Card from '$lib/components/Card.svelte';
 	import Boton from '$lib/components/Boton.svelte';
 	import Insignia from '$lib/components/Insignia.svelte';
-	import SinDatos from '$lib/components/SinDatos.svelte';
+	import TablaDatos from '$lib/components/TablaDatos.svelte';
 	import { avisar } from '$lib/components/Mensaje.svelte';
 
 	let eventos = $state([]);
@@ -58,29 +58,28 @@
 	</select>
 </div>
 <Card class="tabla">
-	<table>
-		<thead><tr><th>Evento</th><th>Organizador</th><th>Fecha</th><th>Lugar</th><th>Cupos</th><th>Estado</th><th></th></tr></thead>
-		<tbody>
-			{#each eventos as e}
-				<tr>
-					<td><strong>{e.nombre}</strong><br /><span class="mut">{e.categoria}</span></td>
-					<td>{e.organizador}</td>
-					<td>{fechaLarga(e.fecha_inicio)}</td>
-					<td>{e.lugar}</td>
-					<td>{e.colegios_inscritos}/{e.cupo_colegios}</td>
-					<td><Insignia valor={e.estado} /></td>
-					<td>
-						{#if e.estado === 'pendiente'}
-							<Boton pequeno onclick={() => decidir(e.id, 'publicado')}>Publicar</Boton>
-							<Boton variante="borrar" pequeno onclick={() => decidir(e.id, 'rechazado')}>Rechazar</Boton>
-						{:else if e.estado === 'publicado'}
-							<Boton variante="borde" pequeno onclick={() => cerrar(e.id)}>Cerrar</Boton>
-						{/if}
-					</td>
-				</tr>
-			{:else}
-				<SinDatos texto={cargando ? 'Cargando…' : 'No hay eventos con este estado.'} columnas={7} />
-			{/each}
-		</tbody>
-	</table>
+	<TablaDatos
+		filas={eventos}
+		vacio={cargando ? 'Cargando…' : 'No hay eventos con este estado.'}
+		columnas={[{ t: 'Evento', k: 'nombre' }, { t: 'Organizador', k: 'organizador' }, { t: 'Fecha', k: 'fecha_inicio' }, { t: 'Lugar', k: 'lugar' }, { t: 'Cupos', k: 'colegios_inscritos' }, { t: 'Estado', k: 'estado' }, { t: '' }]}
+	>
+		{#snippet fila(e)}
+			<tr>
+				<td><strong>{e.nombre}</strong><br /><span class="mut">{e.categoria}</span></td>
+				<td>{e.organizador}</td>
+				<td>{fechaLarga(e.fecha_inicio)}</td>
+				<td>{e.lugar}</td>
+				<td>{e.colegios_inscritos}/{e.cupo_colegios}</td>
+				<td><Insignia valor={e.estado} /></td>
+				<td>
+					{#if e.estado === 'pendiente'}
+						<Boton pequeno onclick={() => decidir(e.id, 'publicado')}>Publicar</Boton>
+						<Boton variante="borrar" pequeno onclick={() => decidir(e.id, 'rechazado')}>Rechazar</Boton>
+					{:else if e.estado === 'publicado'}
+						<Boton variante="borde" pequeno onclick={() => cerrar(e.id)}>Cerrar</Boton>
+					{/if}
+				</td>
+			</tr>
+		{/snippet}
+	</TablaDatos>
 </Card>

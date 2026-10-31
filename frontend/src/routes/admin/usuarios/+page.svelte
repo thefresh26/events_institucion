@@ -1,6 +1,5 @@
 <script>
 	import { onMount } from 'svelte';
-	import { fechaLarga } from '$lib/services/api_base.js';
 	import { listarUsuarios, crearUsuario, actualizarUsuario, eliminarUsuario, restablecerContrasena } from '$lib/services/api_usuario.js';
 	import { sesion } from '$lib/session.svelte.js';
 	import Header from '$lib/components/Header.svelte';
@@ -8,7 +7,7 @@
 	import Boton from '$lib/components/Boton.svelte';
 	import CampoFormulario from '$lib/components/CampoFormulario.svelte';
 	import Insignia from '$lib/components/Insignia.svelte';
-	import SinDatos from '$lib/components/SinDatos.svelte';
+	import TablaDatos from '$lib/components/TablaDatos.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import { avisar } from '$lib/components/Mensaje.svelte';
 
@@ -114,38 +113,36 @@
 </div>
 
 <Card class="tabla">
-	<table>
-		<thead><tr><th>Usuario</th><th>Rol</th><th>Perfil</th><th>Creado</th><th>Estado</th><th></th></tr></thead>
-		<tbody>
-			{#each lista as u (u.id)}
-				<tr>
-					<td><strong>{u.nombre} {u.apellido}</strong><br /><span class="mut">{u.correo}</span></td>
-					<td><Insignia valor={COLOR_ROL[u.rol] ?? 'borrador'} texto={ROLES[u.rol] ?? u.rol} /></td>
-					<td>{u.perfil ?? '—'}</td>
-					<td class="mut">{fechaLarga(u.creado_en)}</td>
-					<td><Insignia valor={u.activo ? 'publicado' : 'rechazado'} texto={u.activo ? 'Activo' : 'Inactivo'} /></td>
-					<td>
-						<div class="row" style="margin:0;gap:6px">
-							<Boton variante="borde" pequeno onclick={() => { error = ''; edita = { ...u }; }}>Editar</Boton>
-							{#if u.id !== sesion.usuario.id}
-								<Boton variante="borde" pequeno onclick={() => (confirmar = { usuario: u, accion: 'restablecer' })}>Restablecer clave</Boton>
-								{#if u.activo}
-									<Boton variante="borde" pequeno onclick={() => activar(u, false)}>Desactivar</Boton>
-								{:else}
-									<Boton pequeno onclick={() => activar(u, true)}>Activar</Boton>
-								{/if}
-								<Boton variante="borrar" pequeno onclick={() => (confirmar = { usuario: u, accion: 'eliminar' })}>Eliminar</Boton>
+	<TablaDatos
+		filas={lista}
+		vacio={cargando ? 'Cargando…' : 'No hay usuarios con esos filtros.'}
+		columnas={[{ t: 'Usuario', k: (u) => `${u.nombre} ${u.apellido}` }, { t: 'Rol', k: 'rol' }, { t: 'Perfil', k: 'perfil' }, { t: 'Estado', k: 'activo' }, { t: '' }]}
+	>
+		{#snippet fila(u)}
+			<tr>
+				<td><strong>{u.nombre} {u.apellido}</strong><br /><span class="mut">{u.correo}</span></td>
+				<td><Insignia valor={COLOR_ROL[u.rol] ?? 'borrador'} texto={ROLES[u.rol] ?? u.rol} /></td>
+				<td>{u.perfil ?? "—"}</td>
+				<td><Insignia valor={u.activo ? 'publicado' : 'rechazado'} texto={u.activo ? 'Activo' : 'Inactivo'} /></td>
+				<td>
+					<div class="row" style="margin:0;gap:6px;min-width:170px">
+						<Boton variante="borde" pequeno onclick={() => { error = ''; edita = { ...u }; }}>Editar</Boton>
+						{#if u.id !== sesion.usuario.id}
+							<Boton variante="borde" pequeno onclick={() => (confirmar = { usuario: u, accion: 'restablecer' })}>Restablecer clave</Boton>
+							{#if u.activo}
+								<Boton variante="borde" pequeno onclick={() => activar(u, false)}>Desactivar</Boton>
 							{:else}
-								<span class="mut">(tú)</span>
+								<Boton pequeno onclick={() => activar(u, true)}>Activar</Boton>
 							{/if}
-						</div>
-					</td>
-				</tr>
-			{:else}
-				<SinDatos texto={cargando ? 'Cargando…' : 'No hay usuarios con esos filtros.'} columnas={6} />
-			{/each}
-		</tbody>
-	</table>
+							<Boton variante="borrar" pequeno onclick={() => (confirmar = { usuario: u, accion: 'eliminar' })}>Eliminar</Boton>
+						{:else}
+							<span class="mut">(tú)</span>
+						{/if}
+					</div>
+				</td>
+			</tr>
+		{/snippet}
+	</TablaDatos>
 </Card>
 
 {#if nuevo}

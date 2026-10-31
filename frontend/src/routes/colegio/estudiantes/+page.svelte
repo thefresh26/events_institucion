@@ -6,7 +6,7 @@
 	import Card from '$lib/components/Card.svelte';
 	import Boton from '$lib/components/Boton.svelte';
 	import CampoFormulario from '$lib/components/CampoFormulario.svelte';
-	import SinDatos from '$lib/components/SinDatos.svelte';
+	import TablaDatos from '$lib/components/TablaDatos.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import { avisar } from '$lib/components/Mensaje.svelte';
 
@@ -77,16 +77,15 @@
 <Header titulo="Mis estudiantes" subtitulo="Solo tu colegio puede ver y editar esta lista." />
 <div class="row"><Boton onclick={() => { error = ''; form = vacio(); }}>+ Registrar estudiante</Boton></div>
 <Card class="tabla">
-	<table>
-		<thead><tr><th>Nombre</th><th>Documento</th><th>Grado</th><th></th></tr></thead>
-		<tbody>
-			{#each lista as s}
-				<tr><td>{s.nombre} {s.apellido}</td><td>{s.documento}</td><td>{s.grado}</td><td><div class="row" style="margin:0;flex-wrap:nowrap"><Boton variante="borde" pequeno onclick={() => editar(s)}>Editar</Boton><Boton variante="borrar" pequeno onclick={() => (porRetirar = s)}>Retirar</Boton></div></td></tr>
-			{:else}
-				<SinDatos texto="Aún no has registrado estudiantes." columnas={4} />
-			{/each}
-		</tbody>
-	</table>
+	<TablaDatos
+		filas={lista}
+		vacio="Aún no has registrado estudiantes."
+		columnas={[{ t: 'Nombre', k: (s) => `${s.nombre} ${s.apellido}` }, { t: 'Documento', k: 'documento' }, { t: 'Grado', k: 'grado' }, { t: '' }]}
+	>
+		{#snippet fila(s)}
+			<tr><td>{s.nombre} {s.apellido}</td><td>{s.documento}</td><td>{s.grado}</td><td><div class="row" style="margin:0;flex-wrap:nowrap"><Boton variante="borde" pequeno onclick={() => editar(s)}>Editar</Boton><Boton variante="borrar" pequeno onclick={() => (porRetirar = s)}>Retirar</Boton></div></td></tr>
+		{/snippet}
+	</TablaDatos>
 </Card>
 <p class="note">Solo se piden los datos mínimos necesarios. El documento se muestra enmascarado y los datos de menores se tratan según la <a href="/politica-de-privacidad">política de privacidad</a> (Ley 1581 de 2012).</p>
 

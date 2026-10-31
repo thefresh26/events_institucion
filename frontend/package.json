@@ -14,5 +14,8 @@
 		"@sveltejs/vite-plugin-svelte": "^4.0.0",
 		"svelte": "^5.0.0",
 		"vite": "^5.4.11"
+	},
+	"dependencies": {
+		"@vincjo/datatables": "^2.8.1"
 	}
 }

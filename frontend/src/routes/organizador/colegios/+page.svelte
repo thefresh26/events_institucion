@@ -7,7 +7,7 @@
 	import Boton from '$lib/components/Boton.svelte';
 	import CampoFormulario from '$lib/components/CampoFormulario.svelte';
 	import Insignia from '$lib/components/Insignia.svelte';
-	import SinDatos from '$lib/components/SinDatos.svelte';
+	import TablaDatos from '$lib/components/TablaDatos.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import { avisar } from '$lib/components/Mensaje.svelte';
 
@@ -69,25 +69,24 @@
 <Header titulo="Mis colegios" subtitulo="Registra a los colegios que participarán en tus eventos. Ellos registran a sus propios estudiantes." />
 <div class="row"><Boton onclick={() => { error = ''; form = vacio(); }}>+ Registrar colegio</Boton></div>
 <Card class="tabla">
-	<table>
-		<thead><tr><th>Colegio</th><th>NIT</th><th>Ciudad</th><th>Contacto</th><th>Estado</th><th></th></tr></thead>
-		<tbody>
-			{#each lista as c}
-				<tr>
-					<td><strong>{c.nombre}</strong></td><td>{c.nit}</td><td>{c.ciudad}</td><td>{c.contacto}<br /><span class="mut">{c.correo}</span></td>
-					<td><Insignia valor={c.activo ? 'publicado' : 'borrador'} texto={c.activo ? 'Activo' : 'Inactivo'} /></td>
-					<td>
-						<div class="row" style="margin:0;flex-wrap:nowrap;white-space:nowrap">
-							<Boton variante="borde" pequeno onclick={() => activar(c, !c.activo)}>{c.activo ? 'Desactivar' : 'Activar'}</Boton>
-							<Boton variante="borrar" pequeno onclick={() => (porEliminar = c)}>Eliminar</Boton>
-						</div>
-					</td>
-				</tr>
-			{:else}
-				<SinDatos texto="Aún no has registrado colegios." columnas={6} />
-			{/each}
-		</tbody>
-	</table>
+	<TablaDatos
+		filas={lista}
+		vacio="Aún no has registrado colegios."
+		columnas={[{ t: 'Colegio', k: 'nombre' }, { t: 'NIT', k: 'nit' }, { t: 'Ciudad', k: 'ciudad' }, { t: 'Contacto', k: 'contacto' }, { t: 'Estado', k: 'activo' }, { t: '' }]}
+	>
+		{#snippet fila(c)}
+			<tr>
+				<td><strong>{c.nombre}</strong></td><td>{c.nit}</td><td>{c.ciudad}</td><td>{c.contacto}<br /><span class="mut">{c.correo}</span></td>
+				<td><Insignia valor={c.activo ? 'publicado' : 'borrador'} texto={c.activo ? 'Activo' : 'Inactivo'} /></td>
+				<td>
+					<div class="row" style="margin:0;flex-wrap:nowrap;white-space:nowrap">
+						<Boton variante="borde" pequeno onclick={() => activar(c, !c.activo)}>{c.activo ? 'Desactivar' : 'Activar'}</Boton>
+						<Boton variante="borrar" pequeno onclick={() => (porEliminar = c)}>Eliminar</Boton>
+					</div>
+				</td>
+			</tr>
+		{/snippet}
+	</TablaDatos>
 </Card>
 
 {#if form}

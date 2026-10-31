@@ -8,7 +8,7 @@
 	import Boton from '$lib/components/Boton.svelte';
 	import CampoFormulario from '$lib/components/CampoFormulario.svelte';
 	import Insignia from '$lib/components/Insignia.svelte';
-	import SinDatos from '$lib/components/SinDatos.svelte';
+	import TablaDatos from '$lib/components/TablaDatos.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import { avisar } from '$lib/components/Mensaje.svelte';
 
@@ -84,33 +84,32 @@
 <Header titulo="Mis eventos" subtitulo="Crea tus eventos y envíalos al administrador para que los publique." />
 <div class="row"><Boton onclick={() => abrir(null)}>+ Nuevo evento</Boton></div>
 <Card class="tabla">
-	<table>
-		<thead><tr><th>Evento</th><th>Fecha</th><th>Lugar</th><th>Cupos</th><th>Estado</th><th></th></tr></thead>
-		<tbody>
-			{#each eventos as e}
-				<tr>
-					<td><strong>{e.nombre}</strong><br /><span class="mut">{e.categoria}</span></td>
-					<td>{fechaLarga(e.fecha_inicio)}</td><td>{e.lugar}</td><td>{e.colegios_inscritos}/{e.cupo_colegios}</td>
-					<td><Insignia valor={e.estado} /></td>
-					<td>
-						{#if ELIMINABLES.includes(e.estado)}
-							<div class="row" style="margin:0;flex-wrap:nowrap;white-space:nowrap">
-								{#if e.estado !== 'cerrado'}
-									<Boton variante="borde" pequeno onclick={() => abrir(e)}>Editar</Boton>
-								{/if}
-								{#if e.estado === 'borrador'}
-									<Boton pequeno onclick={() => enviar(e.id)}>Enviar a aprobación</Boton>
-								{/if}
-								<Boton variante="borrar" pequeno onclick={() => (porEliminar = e)}>Eliminar</Boton>
-							</div>
-						{/if}
-					</td>
-				</tr>
-			{:else}
-				<SinDatos texto="Todavía no has creado eventos." columnas={6} />
-			{/each}
-		</tbody>
-	</table>
+	<TablaDatos
+		filas={eventos}
+		vacio="Todavía no has creado eventos."
+		columnas={[{ t: 'Evento', k: 'nombre' }, { t: 'Fecha', k: 'fecha_inicio' }, { t: 'Lugar', k: 'lugar' }, { t: 'Cupos', k: 'colegios_inscritos' }, { t: 'Estado', k: 'estado' }, { t: '' }]}
+	>
+		{#snippet fila(e)}
+			<tr>
+				<td><strong>{e.nombre}</strong><br /><span class="mut">{e.categoria}</span></td>
+				<td>{fechaLarga(e.fecha_inicio)}</td><td>{e.lugar}</td><td>{e.colegios_inscritos}/{e.cupo_colegios}</td>
+				<td><Insignia valor={e.estado} /></td>
+				<td>
+					{#if ELIMINABLES.includes(e.estado)}
+						<div class="row" style="margin:0;flex-wrap:nowrap;white-space:nowrap">
+							{#if e.estado !== 'cerrado'}
+								<Boton variante="borde" pequeno onclick={() => abrir(e)}>Editar</Boton>
+							{/if}
+							{#if e.estado === 'borrador'}
+								<Boton pequeno onclick={() => enviar(e.id)}>Enviar a aprobación</Boton>
+							{/if}
+							<Boton variante="borrar" pequeno onclick={() => (porEliminar = e)}>Eliminar</Boton>
+						</div>
+					{/if}
+				</td>
+			</tr>
+		{/snippet}
+	</TablaDatos>
 </Card>
 
 {#if form}

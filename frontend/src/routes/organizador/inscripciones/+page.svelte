@@ -6,7 +6,7 @@
 	import Card from '$lib/components/Card.svelte';
 	import Boton from '$lib/components/Boton.svelte';
 	import Insignia from '$lib/components/Insignia.svelte';
-	import SinDatos from '$lib/components/SinDatos.svelte';
+	import TablaDatos from '$lib/components/TablaDatos.svelte';
 	import { avisar } from '$lib/components/Mensaje.svelte';
 
 	let lista = $state([]);
@@ -34,23 +34,25 @@
 
 <Header titulo="Inscripciones" subtitulo="Colegios que quieren participar en tus eventos." />
 <Card class="tabla">
-	<table>
-		<thead><tr><th>Evento</th><th>Colegio</th><th>Estudiantes</th><th>Solicitada</th><th>Estado</th><th></th></tr></thead>
-		<tbody>
-			{#each lista as i}
-				<tr>
-					<td><strong>{i.evento}</strong></td><td>{i.colegio}</td><td>{i.estudiantes}</td><td>{fechaLarga(i.creada_en)}</td>
-					<td><Insignia valor={i.estado} /></td>
-					<td>
-						{#if i.estado === 'pendiente'}
-							<Boton pequeno onclick={() => decidir(i.id, 'aceptada')}>Aceptar</Boton>
-							<Boton variante="borrar" pequeno onclick={() => decidir(i.id, 'rechazada')}>Rechazar</Boton>
-						{/if}
-					</td>
-				</tr>
-			{:else}
-				<SinDatos texto="Todavía no hay inscripciones." columnas={6} />
-			{/each}
-		</tbody>
-	</table>
+	<TablaDatos
+		filas={lista}
+		vacio="Todavía no hay inscripciones."
+		columnas={[
+			{ t: 'Evento', k: 'evento' }, { t: 'Colegio', k: 'colegio' }, { t: 'Estudiantes', k: 'estudiantes' },
+			{ t: 'Solicitada', k: 'creada_en' }, { t: 'Estado', k: 'estado' }, { t: '' }
+		]}
+	>
+		{#snippet fila(i)}
+			<tr>
+				<td><strong>{i.evento}</strong></td><td>{i.colegio}</td><td>{i.estudiantes}</td><td>{fechaLarga(i.creada_en)}</td>
+				<td><Insignia valor={i.estado} /></td>
+				<td>
+					{#if i.estado === 'pendiente'}
+						<Boton pequeno onclick={() => decidir(i.id, 'aceptada')}>Aceptar</Boton>
+						<Boton variante="borrar" pequeno onclick={() => decidir(i.id, 'rechazada')}>Rechazar</Boton>
+					{/if}
+				</td>
+			</tr>
+		{/snippet}
+	</TablaDatos>
 </Card>

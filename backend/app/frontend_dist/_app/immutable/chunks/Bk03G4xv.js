@@ -1,0 +1,1 @@
+import{a as o}from"./q4riZjLG.js";import{o as r,a as s}from"./Dig4pq_w.js";const a=o({usuario:null,cargando:!0});async function c(){try{a.usuario=await r()}catch{a.usuario=null}a.cargando=!1}async function u(){await s().catch(()=>{}),a.usuario=null}export{u as a,c,a as s};

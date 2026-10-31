@@ -5,7 +5,7 @@
 	import Header from '$lib/components/Header.svelte';
 	import Card from '$lib/components/Card.svelte';
 	import Insignia from '$lib/components/Insignia.svelte';
-	import SinDatos from '$lib/components/SinDatos.svelte';
+	import TablaDatos from '$lib/components/TablaDatos.svelte';
 	import { avisar } from '$lib/components/Mensaje.svelte';
 
 	let lista = $state([]);
@@ -22,14 +22,13 @@
 
 <Header titulo="Mis inscripciones" subtitulo="Estado de tu colegio en cada evento." />
 <Card class="tabla">
-	<table>
-		<thead><tr><th>Evento</th><th>Fecha</th><th>Estudiantes</th><th>Estado</th></tr></thead>
-		<tbody>
-			{#each lista as i}
-				<tr><td><strong>{i.evento}</strong></td><td>{fechaLarga(i.fecha_inicio)}</td><td>{i.estudiantes.join(', ')}</td><td><Insignia valor={i.estado} /></td></tr>
-			{:else}
-				<SinDatos texto="Aún no tienes inscripciones." columnas={4} />
-			{/each}
-		</tbody>
-	</table>
+	<TablaDatos
+		filas={lista}
+		vacio="Aún no tienes inscripciones."
+		columnas={[{ t: 'Evento', k: 'evento' }, { t: 'Fecha', k: 'fecha_inicio' }, { t: 'Estudiantes', k: (i) => i.estudiantes.length }, { t: 'Estado', k: 'estado' }]}
+	>
+		{#snippet fila(i)}
+			<tr><td><strong>{i.evento}</strong></td><td>{fechaLarga(i.fecha_inicio)}</td><td>{i.estudiantes.join(', ')}</td><td><Insignia valor={i.estado} /></td></tr>
+		{/snippet}
+	</TablaDatos>
 </Card>
