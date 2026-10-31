@@ -1,8 +1,8 @@
 -- ============================================================================
 -- Conexion Escolar - script_neon.sql (PostgreSQL / Neon)
 -- Esquema de 18 tablas (todas con estado, creado, actualizado + trigger) y datos de ejemplo realistas:
--- 20 registros o mas en las tablas principales y 10 o mas en las secundarias (los catalogos
--- cerrados rol=3, estado_evento=5 y estado_inscripcion=3 tienen los valores que el sistema define).
+-- 20 registros o mas en las tablas principales y 10 o mas en las secundarias (rol, estado_evento y
+-- estado_inscripcion incluyen los valores que usa el sistema y otros de apoyo hasta completar 10).
 -- Escrito a mano para el taller (NO es un backup). Se puede ejecutar varias veces: no duplica.
 -- Usuarios de ejemplo: todos con la misma clave de demostracion (se entrega aparte), guardada como hash bcrypt.
 -- Orden: 1) esquema  2) catalogos  3) usuarios  4) organizadores y colegios  5) eventos  6) estudiantes
@@ -319,11 +319,18 @@ CREATE TRIGGER trg_actualizado BEFORE UPDATE ON "inscripcion_estudiante" FOR EAC
 
 -- 2) CATALOGOS ----------------------------------------------------------
 
--- rol: 3 registros
+-- rol: 10 registros (los 3 primeros son los que usa el sistema; el resto son catalogo de apoyo)
 INSERT INTO rol (id, nombre, descripcion) VALUES
   (1, 'administrador', 'Aprueba eventos y administra organizadores y colegios'),
   (2, 'organizador', 'Crea eventos y gestiona la inscripcion de colegios'),
-  (3, 'colegio', 'Inscribe a su institucion y a sus estudiantes en los eventos')
+  (3, 'colegio', 'Inscribe a su institucion y a sus estudiantes en los eventos'),
+  (4, 'coordinador', 'Apoya al organizador en la logistica de los eventos'),
+  (5, 'docente', 'Acompana a los estudiantes de su colegio durante el evento'),
+  (6, 'acudiente', 'Autoriza la participacion de sus acudidos'),
+  (7, 'jurado', 'Evalua las presentaciones del evento'),
+  (8, 'auditor', 'Consulta registros y reportes sin modificarlos'),
+  (9, 'soporte', 'Atiende solicitudes y problemas de los usuarios'),
+  (10, 'invitado', 'Consulta eventos publicados sin inscribirse')
 ON CONFLICT DO NOTHING;
 
 -- modulo: 12 registros
@@ -429,20 +436,32 @@ INSERT INTO categoria_evento (id, nombre, descripcion) VALUES
   (10, 'Música', 'Festivales y encuentros musicales')
 ON CONFLICT DO NOTHING;
 
--- estado_evento: 5 registros
+-- estado_evento: 10 registros (1 a 5 los usa el sistema)
 INSERT INTO estado_evento (id, nombre) VALUES
   (1, 'borrador'),
   (2, 'pendiente'),
   (3, 'publicado'),
   (4, 'rechazado'),
-  (5, 'cerrado')
+  (5, 'cerrado'),
+  (6, 'en_revision'),
+  (7, 'cancelado'),
+  (8, 'aplazado'),
+  (9, 'finalizado'),
+  (10, 'archivado')
 ON CONFLICT DO NOTHING;
 
--- estado_inscripcion: 3 registros
+-- estado_inscripcion: 10 registros (1 a 3 los usa el sistema)
 INSERT INTO estado_inscripcion (id, nombre) VALUES
   (1, 'pendiente'),
   (2, 'aceptada'),
-  (3, 'rechazada')
+  (3, 'rechazada'),
+  (4, 'en_lista_espera'),
+  (5, 'cancelada'),
+  (6, 'vencida'),
+  (7, 'confirmada'),
+  (8, 'en_revision'),
+  (9, 'sin_cupo'),
+  (10, 'retirada')
 ON CONFLICT DO NOTHING;
 
 -- 3) USUARIOS (1 administrador demo, 20 organizadores, 20 colegios) --------
