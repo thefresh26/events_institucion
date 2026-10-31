@@ -1,4 +1,4 @@
-const pool = require('./db');
+const pool = require('../config/dbConfig');
 
 class HttpError extends Error { constructor(status, detail) { super(detail); this.status = status; } }
 const bad = (detail) => new HttpError(422, detail);

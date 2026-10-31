@@ -3,8 +3,8 @@ process.env.SECRET_KEY = process.env.SECRET_KEY || 'test-secret';
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const jwt = require('jsonwebtoken');
-const app = require('../src/app');
-const pool = require('../src/db');
+const app = require('../app');
+const pool = require('../config/dbConfig');
 
 let server, base;
 const token = (sub, rol, extra = {}) => jwt.sign({ sub: String(sub), rol }, process.env.SECRET_KEY, { algorithm: 'HS256', expiresIn: '1h', ...extra });
@@ -46,7 +46,7 @@ test('salud, documentacion y JWT', async () => {
 test('sin SECRET_KEY (o con la de ejemplo) el servidor no arranca y lo explica', () => {
   const { spawnSync } = require('node:child_process');
   for (const valor of ['', 'cambia-esto']) {
-    const r = spawnSync(process.execPath, ['server.js'], { cwd: require('node:path').join(__dirname, '..'), timeout: 10000,
+    const r = spawnSync(process.execPath, ['index.js'], { cwd: require('node:path').join(__dirname, '..'), timeout: 10000,
       env: { ...process.env, SECRET_KEY: valor, PORT: '0' }, encoding: 'utf8' });
     assert.equal(r.status, 1, `con SECRET_KEY="${valor}" debio salir con codigo 1`);
     assert.match(r.stderr, /falta SECRET_KEY/);

@@ -1,4 +1,4 @@
-const app = require('./src/app');   // carga el .env (dotenv)
+const app = require('./app');   // carga el .env (dotenv)
 const port = process.env.PORT || 4000;
 
 // Sin SECRET_KEY no se puede validar ningun JWT: mejor no arrancar que aceptar peticiones que siempre fallarian.

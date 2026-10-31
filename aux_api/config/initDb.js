@@ -3,7 +3,7 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const mysql = require('mysql2/promise');
-const { ssl } = require('./db');
+const { ssl } = require('./dbConfig');
 
 (async () => {
   const c = await mysql.createConnection({

@@ -14,6 +14,21 @@ claims `sub` (id de usuario) y `rol`.
 
 Todas con `estado` (1 activo / 0 eliminado: el registro no se borra), `creado` y `actualizado` (`ON UPDATE CURRENT_TIMESTAMP`).
 
+## Estructura (la de la clase: modelo, controlador y ruta)
+
+```
+aux_api/
+  index.js            arranque del servidor
+  app.js              Express: middlewares, rutas y manejo de errores
+  config/             dbConfig.js (conexión MySQL) e initDb.js (crea las tablas)
+  models/             solo SQL (tipoPqrsModel, pqrsModel, comunicadoModel, valoracionModel)
+  controllers/        validaciones y respuestas (un controlador por modelo)
+  routes/             solo los endpoints (get, post, put, delete, patch)
+  middlewares/        auth.js (JWT y roles)
+  utils/              util.js (validadores y errores)
+  schema.sql          tablas · script_mysql.sql: tablas + datos de ejemplo
+```
+
 ## Ejecutar
 
 ```
