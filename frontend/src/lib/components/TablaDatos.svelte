@@ -45,6 +45,7 @@
 </div>
 
 <style>
+	.tabla-datos { overflow-x: auto; }
 	/* app.css da estilo de menu lateral a todo <aside>; aqui se anula para los <aside> de la libreria (filas por pagina y conteo) */
 	.tabla-datos :global(section header aside), .tabla-datos :global(section footer aside) {
 		width: auto; height: auto; position: static; display: flex; flex-direction: row; gap: 0;

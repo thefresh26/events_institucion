@@ -79,7 +79,7 @@
 				<td><strong>{c.nombre}</strong></td><td>{c.nit}</td><td>{c.ciudad}</td><td>{c.contacto}<br /><span class="mut">{c.correo}</span></td>
 				<td><Insignia valor={c.activo ? 'publicado' : 'borrador'} texto={c.activo ? 'Activo' : 'Inactivo'} /></td>
 				<td>
-					<div class="row" style="margin:0;flex-wrap:nowrap;white-space:nowrap">
+					<div class="row" style="margin:0;flex-wrap:wrap">
 						<Boton variante="borde" pequeno onclick={() => activar(c, !c.activo)}>{c.activo ? 'Desactivar' : 'Activar'}</Boton>
 						<Boton variante="borrar" pequeno onclick={() => (porEliminar = c)}>Eliminar</Boton>
 					</div>

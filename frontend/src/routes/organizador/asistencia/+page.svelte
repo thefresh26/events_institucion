@@ -11,17 +11,19 @@
 	let eventos = $state([]);
 	let id = $state('');
 	let grupos = $state([]);
+	let cargando = $state(true);
 
 	onMount(async () => {
 		try {
 			eventos = (await listarMisEventos()).filter((e) => ['publicado', 'cerrado'].includes(e.estado));
 			if (eventos[0]) {
 				id = eventos[0].id;
-				cargar();
+				await cargar();
 			}
 		} catch (e) {
 			avisar(e.message, true);
 		}
+		cargando = false;
 	});
 	async function cargar() {
 		grupos = id ? await obtenerAsistencia(id).catch((e) => (avisar(e.message, true), [])) : [];
@@ -55,5 +57,5 @@
 		{/each}
 	</Card>
 {:else}
-	<SinDatos texto={eventos.length ? 'Este evento aún no tiene colegios aceptados.' : 'No tienes eventos publicados.'} />
+	{#if cargando}<p class="mut">Cargando...</p>{:else}<SinDatos texto={eventos.length ? 'Este evento aún no tiene colegios aceptados.' : 'No tienes eventos publicados.'} />{/if}
 {/each}

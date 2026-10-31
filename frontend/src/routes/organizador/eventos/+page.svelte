@@ -96,7 +96,7 @@
 				<td><Insignia valor={e.estado} /></td>
 				<td>
 					{#if ELIMINABLES.includes(e.estado)}
-						<div class="row" style="margin:0;flex-wrap:nowrap;white-space:nowrap">
+						<div class="row" style="margin:0;flex-wrap:wrap">
 							{#if e.estado !== 'cerrado'}
 								<Boton variante="borde" pequeno onclick={() => abrir(e)}>Editar</Boton>
 							{/if}
