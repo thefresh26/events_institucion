@@ -206,15 +206,15 @@ CREATE TABLE IF NOT EXISTS estudiante (
 	id_grado INTEGER NOT NULL, 
 	nombre VARCHAR(100) NOT NULL, 
 	apellido VARCHAR(100) NOT NULL, 
-	documento VARCHAR(20) NOT NULL, 
+	documento VARCHAR(20), 
 	estado BOOLEAN DEFAULT true NOT NULL, 
 	creado TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL, 
 	actualizado TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL, 
 	PRIMARY KEY (id), 
-	UNIQUE (id_colegio, documento), 
 	FOREIGN KEY(id_colegio) REFERENCES colegio (id), 
 	FOREIGN KEY(id_grado) REFERENCES grado (id)
 );
+CREATE UNIQUE INDEX IF NOT EXISTS uq_estudiante_nombre_grado ON estudiante (id_colegio, lower(nombre), lower(apellido), id_grado) WHERE estado = true;
 
 CREATE TABLE IF NOT EXISTS inscripcion (
 	id SERIAL NOT NULL, 
@@ -319,18 +319,11 @@ CREATE TRIGGER trg_actualizado BEFORE UPDATE ON "inscripcion_estudiante" FOR EAC
 
 -- 2) CATALOGOS ----------------------------------------------------------
 
--- rol: 10 registros (los 3 primeros son los que usa el sistema; el resto son catalogo de apoyo)
+-- rol: 3 registros (los 3 roles que usa el sistema)
 INSERT INTO rol (id, nombre, descripcion) VALUES
   (1, 'administrador', 'Aprueba eventos y administra organizadores y colegios'),
   (2, 'organizador', 'Crea eventos y gestiona la inscripcion de colegios'),
-  (3, 'colegio', 'Inscribe a su institucion y a sus estudiantes en los eventos'),
-  (4, 'coordinador', 'Apoya al organizador en la logistica de los eventos'),
-  (5, 'docente', 'Acompana a los estudiantes de su colegio durante el evento'),
-  (6, 'acudiente', 'Autoriza la participacion de sus acudidos'),
-  (7, 'jurado', 'Evalua las presentaciones del evento'),
-  (8, 'auditor', 'Consulta registros y reportes sin modificarlos'),
-  (9, 'soporte', 'Atiende solicitudes y problemas de los usuarios'),
-  (10, 'invitado', 'Consulta eventos publicados sin inscribirse')
+  (3, 'colegio', 'Inscribe a su institucion y a sus estudiantes en los eventos')
 ON CONFLICT DO NOTHING;
 
 -- modulo: 12 registros

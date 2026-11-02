@@ -27,7 +27,10 @@
 		reportes: ['/organizador/reportes', 'Reportes'],
 		eventos_disponibles: ['/colegio/eventos', 'Eventos'],
 		mis_inscripciones: ['/colegio/inscripciones', 'Mis inscripciones'],
-		mis_estudiantes: ['/colegio/estudiantes', 'Estudiantes']
+		mis_estudiantes: ['/estudiantes', 'Estudiantes'],
+		pqrs: ['/pqrs', 'PQRS'],
+		comunicados: ['/comunicados', 'Comunicados'],
+		valoraciones: ['/valoraciones', 'Valoraciones']
 	};
 	const menu = $derived(
 		Object.entries(RUTAS).filter(([k]) => sesion.usuario?.modulos.includes(k)).map(([, v]) => v)

@@ -1,0 +1,1 @@
+import{p as s}from"./DMvJmjRe.js";const a="/estudiantes",n=()=>s(a),i=t=>s(a,{method:"POST",body:t}),d=t=>s(`${a}/${t}`),c=(t,e)=>s(`${a}/${t}`,{method:"PUT",body:e}),r=t=>s(`${a}/${t}`,{method:"DELETE"});export{c as a,i as c,r as e,n as l,d as o};

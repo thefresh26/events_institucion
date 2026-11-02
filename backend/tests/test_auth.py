@@ -79,17 +79,17 @@ def colegio_de(org, correo, nit):
     return c, r.json()["colegio"]["id"]
 
 
-EST = dict(nombre="Valentina", apellido="Rios", documento="1098765421", id_grado=1, nombre_acudiente="Maria Rios", acudiente_autoriza=True)
+EST = dict(nombre="Valentina", apellido="Rios", id_grado=1, nombre_acudiente="Maria Rios", acudiente_autoriza=True)
 
 
 def test_flujo_organizador_colegio_estudiante():
     org = organizador("org1@x.co", "800000001")
     col, id_col = colegio_de(org, "rector1@x.co", "900000001")
     assert col.get(f"{API}/auth/me").json()["modulos"] == ["panel"]
-    r = col.post(f"{API}/colegio/estudiantes", json=EST)
-    assert r.status_code == 201 and r.json()["documento"] == "109*****21"  # enmascarado
-    assert col.post(f"{API}/colegio/estudiantes", json=EST).status_code == 409  # duplicado
-    assert len(col.get(f"{API}/colegio/estudiantes").json()) == 1
+    r = col.post(f"{API}/estudiantes", json=EST)
+    assert r.status_code == 201  # sin cédula
+    assert col.post(f"{API}/estudiantes", json=EST).status_code == 409  # duplicado
+    assert len(col.get(f"{API}/estudiantes").json()) == 1
     # contrasena temporal -> cambia por una propia
     assert col.post(f"{API}/auth/cambiar-contrasena", json={"actual": "mala", "nueva": "Nueva1234"}).status_code == 400
 
@@ -98,17 +98,17 @@ def test_aislamiento_entre_actores():
     org1, org2 = organizador("org2@x.co", "800000002"), organizador("org3@x.co", "800000003")
     col1, id1 = colegio_de(org1, "rector2@x.co", "900000002")
     col2, _ = colegio_de(org2, "rector3@x.co", "900000003")
-    e = col1.post(f"{API}/colegio/estudiantes", json=EST).json()
-    assert col2.get(f"{API}/colegio/estudiantes").json() == []                       # no ve estudiantes ajenos
-    assert col2.delete(f"{API}/colegio/estudiantes/{e['id']}").status_code == 404    # IDOR bloqueado
+    e = col1.post(f"{API}/estudiantes", json=EST).json()
+    assert col2.get(f"{API}/estudiantes").json() == []                       # no ve estudiantes ajenos
+    assert col2.delete(f"{API}/estudiantes/{e['id']}").status_code == 404    # IDOR bloqueado
     assert org2.patch(f"{API}/organizador/colegios/{id1}/activo", json={"activo": False}).status_code == 404
     assert org1.patch(f"{API}/organizador/colegios/{id1}/activo", json={"activo": True}).json()["activo"] is True
     hechas = acciones("colegio", id1)                                              # quedan auditadas
     assert hechas == ["registrar_colegio", "activar_colegio"]
     assert org2.get(f"{API}/organizador/colegios").json()[0]["nit"] == "900000003"   # solo los suyos
     assert col1.get(f"{API}/organizador/colegios").status_code == 403                # un colegio no es organizador
-    assert TestClient(app).get(f"{API}/colegio/estudiantes").status_code == 401      # sin sesion
-    assert col1.delete(f"{API}/colegio/estudiantes/{e['id']}").status_code == 204    # el dueño si puede retirarlo
+    assert TestClient(app).get(f"{API}/estudiantes").status_code == 401      # sin sesion
+    assert col1.delete(f"{API}/estudiantes/{e['id']}").status_code == 204    # el dueño si puede retirarlo
     hechas = acciones("estudiante", e["id"])                                              # quedan auditadas
     assert sorted(hechas) == ["crear_estudiante", "retirar_estudiante"]
 
@@ -117,23 +117,19 @@ def test_estudiantes_obtener_y_editar():
     org1, org2, adm = organizador("org98@x.co", "898000001"), organizador("org99b@x.co", "898000002"), admin()
     col1, _ = colegio_de(org1, "rector98@x.co", "998000001")
     col2, _ = colegio_de(org2, "rector99@x.co", "998000002")
-    e = col1.post(f"{API}/colegio/estudiantes", json={**EST, "documento": "1234567890"}).json()
-    url = f"{API}/colegio/estudiantes/{e['id']}"
-    # obtener: el propio si (documento enmascarado), el ajeno 404
+    e = col1.post(f"{API}/estudiantes", json=EST).json()
+    url = f"{API}/estudiantes/{e['id']}"
+    # obtener: el propio si, el ajeno 404
     r = col1.get(url)
-    assert r.status_code == 200 and r.json() == {"id": e["id"], "nombre": "Valentina", "apellido": "Rios", "documento": "123*****90", "grado": "9"}
-    assert col2.get(url).status_code == 404 and col1.get(f"{API}/colegio/estudiantes/99999").status_code == 404
-    # editar: cambia los datos, sale enmascarado, refresca "actualizado" y queda auditado
-    cambio = dict(nombre="Valeria", apellido="Rios Paz", documento="1234567899", id_grado=1)
+    assert r.status_code == 200 and r.json() == {"id": e["id"], "nombre": "Valentina", "apellido": "Rios", "grado": "9"}
+    assert col2.get(url).status_code == 404 and col1.get(f"{API}/estudiantes/99999").status_code == 404
+    # editar: cambia los datos, refresca "actualizado" y queda auditado
+    cambio = dict(nombre="Valeria", apellido="Rios Paz", id_grado=1)
     r = col1.put(url, json=cambio)
-    assert r.status_code == 200 and r.json()["nombre"] == "Valeria" and r.json()["documento"] == "123*****99"
-    fila = sql("SELECT documento, creado, actualizado FROM estudiante WHERE id = %s", e["id"])[0]
-    assert fila["documento"] == "1234567899" and fila["actualizado"] > fila["creado"]
+    assert r.status_code == 200 and r.json()["nombre"] == "Valeria"
+    fila = sql("SELECT creado, actualizado FROM estudiante WHERE id = %s", e["id"])[0]
+    assert fila["actualizado"] > fila["creado"]
     assert "editar_estudiante" in acciones("estudiante", e["id"])
-    sin_doc = {k: v for k, v in cambio.items() if k != "documento"}                        # sin documento: se conserva
-    assert col1.put(url, json={**sin_doc, "nombre": "Valery"}).json()["documento"] == "123*****99"
-    assert sql("SELECT documento FROM estudiante WHERE id = %s", e["id"])[0]["documento"] == "1234567899"
-    col1.put(url, json=cambio)
     # editar el de otro colegio: 404 y no cambia nada
     assert col2.put(url, json={**cambio, "nombre": "Intruso"}).status_code == 404
     assert col1.get(url).json()["nombre"] == "Valeria"
@@ -144,9 +140,9 @@ def test_estudiantes_obtener_y_editar():
     r = col1.put(url, json={**cambio, "id_grado": gid})
     assert r.status_code == 422 and r.json()["detail"] == "Grado inválido"
     assert col1.put(url, json={**cambio, "id_colegio": 2}).status_code == 422
-    # documento repetido dentro del mismo colegio: 409
-    otro = col1.post(f"{API}/colegio/estudiantes", json={**EST, "documento": "5555555555"}).json()
-    assert col1.put(f"{API}/colegio/estudiantes/{otro['id']}", json=cambio).status_code == 409
+    # mismo nombre, apellido y grado dentro del mismo colegio: 409
+    otro = col1.post(f"{API}/estudiantes", json={**EST, "apellido": "Otro"}).json()
+    assert col1.put(f"{API}/estudiantes/{otro['id']}", json=cambio).status_code == 409
 
 
 def test_validaciones():
@@ -193,7 +189,7 @@ def publicar(org, adm, **extra):
 
 
 def estudiante(col, doc):
-    r = col.post(f"{API}/colegio/estudiantes", json={**EST, "documento": doc})
+    r = col.post(f"{API}/estudiantes", json={**EST, "apellido": "Rios" + doc.translate(str.maketrans("0123456789","abcdefghij"))})
     assert r.status_code == 201
     return r.json()["id"]
 
@@ -581,3 +577,19 @@ def test_jwt_bearer_y_validacion():
 def test_swagger_publicado():
     c = TestClient(app)
     assert c.get("/docs").status_code == 200 and "/api/v1/auth/login" in c.get("/openapi.json").text
+
+
+def test_colegio_cancela_inscripcion_pendiente():
+    org, adm = organizador("org71@x.co", "871000001"), admin()
+    col, _ = colegio_de(org, "rector71@x.co", "971000001")
+    col2, _ = colegio_de(org, "rector72@x.co", "971000002")
+    eid = publicar(org, adm)
+    e1 = estudiante(col, "7100000001")
+    assert col.post(f"{API}/colegio/eventos/{eid}/inscripcion", json={"estudiantes": [e1]}).status_code == 201
+    iid = col.get(f"{API}/colegio/inscripciones").json()[0]["id"]
+    assert col2.delete(f"{API}/colegio/inscripciones/{iid}").status_code == 404      # no es suyo
+    assert col.delete(f"{API}/colegio/inscripciones/{iid}").status_code == 204
+    assert col.get(f"{API}/colegio/inscripciones").json() == []
+    assert sql("SELECT estado FROM inscripcion WHERE id = %s", iid)[0]["estado"] is False
+    assert col.delete(f"{API}/colegio/inscripciones/{iid}").status_code == 404      # ya cancelada
+    assert col.post(f"{API}/colegio/eventos/{eid}/inscripcion", json={"estudiantes": [e1]}).status_code == 201  # puede volver a inscribirse

@@ -2,6 +2,10 @@ from app.core.database import Database
 
 # Modulos del panel de administracion que el rol administrador siempre debe tener
 MODULOS_ADMIN = {"usuarios": "Gestión de usuarios", "roles": "Roles y módulos"}
+# Pantallas de la API auxiliar (Express): las ven los 3 roles; el administrador puede quitarlas desde "Roles y módulos"
+MODULOS_AUX = {"pqrs": "Peticiones, quejas, reclamos y sugerencias", "comunicados": "Comunicados de la plataforma",
+               "valoraciones": "Valoraciones de los eventos"}
+ROLES = ("administrador", "organizador", "colegio")
 
 
 class AdminRepository:
@@ -44,3 +48,11 @@ class AdminRepository:
                     ON CONFLICT (id_rol, id_modulo) DO UPDATE SET estado = true, actualizado = now()
                     WHERE modulo_por_rol.estado = false;
                 """, (rol["id"], nombre))
+            for nombre, descripcion in MODULOS_AUX.items():  # DO NOTHING: si el administrador lo desactiva, no se vuelve a activar solo
+                cursor.execute("INSERT INTO modulo (nombre, descripcion) VALUES (%s, %s) ON CONFLICT (nombre) DO NOTHING;",
+                               (nombre, descripcion))
+                cursor.execute("""
+                    INSERT INTO modulo_por_rol (id_rol, id_modulo)
+                    SELECT r.id, m.id FROM rol r, modulo m WHERE r.nombre = ANY(%s) AND m.nombre = %s
+                    ON CONFLICT (id_rol, id_modulo) DO NOTHING;
+                """, (list(ROLES), nombre))

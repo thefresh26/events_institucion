@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const pool = require('./config/dbConfig');
+const pool = require('./src/config/dbConfig');
 const { spec } = require('./openapi');
 
 const app = express();
@@ -26,10 +26,10 @@ app.get('/docs', (_req, res) => res.type('html').send(`<!doctype html><html><hea
 <script src="${cdn}/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
 <script>SwaggerUIBundle({ url: '/openapi.json', dom_id: '#ui' });</script></body></html>`));
 
-app.use('/api/aux/tipos-pqrs', require('./routes/tipoPqrsRoutes'));
-app.use('/api/aux/pqrs', require('./routes/pqrsRoutes'));
-app.use('/api/aux/comunicados', require('./routes/comunicadoRoutes'));
-app.use('/api/aux/valoraciones', require('./routes/valoracionRoutes'));
+app.use('/api/aux/tipos-pqrs', require('./src/routes/tipoPqrsRoutes'));
+app.use('/api/aux/pqrs', require('./src/routes/pqrsRoutes'));
+app.use('/api/aux/comunicados', require('./src/routes/comunicadoRoutes'));
+app.use('/api/aux/valoraciones', require('./src/routes/valoracionRoutes'));
 
 app.use((_req, res) => res.status(404).json({ detail: 'No encontrado' }));
 app.use((err, _req, res, _next) => {   // manejador unico: nunca se filtran detalles internos

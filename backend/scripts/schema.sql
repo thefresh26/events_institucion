@@ -201,15 +201,15 @@ CREATE TABLE IF NOT EXISTS estudiante (
 	id_grado INTEGER NOT NULL, 
 	nombre VARCHAR(100) NOT NULL, 
 	apellido VARCHAR(100) NOT NULL, 
-	documento VARCHAR(20) NOT NULL, 
+	documento VARCHAR(20), 
 	estado BOOLEAN DEFAULT true NOT NULL, 
 	creado TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL, 
 	actualizado TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL, 
 	PRIMARY KEY (id), 
-	UNIQUE (id_colegio, documento), 
 	FOREIGN KEY(id_colegio) REFERENCES colegio (id), 
 	FOREIGN KEY(id_grado) REFERENCES grado (id)
 );
+CREATE UNIQUE INDEX IF NOT EXISTS uq_estudiante_nombre_grado ON estudiante (id_colegio, lower(nombre), lower(apellido), id_grado) WHERE estado = true;
 
 CREATE TABLE IF NOT EXISTS inscripcion (
 	id SERIAL NOT NULL, 

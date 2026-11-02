@@ -44,8 +44,8 @@ seguro y repetible).
 - **Igual que la guía:** clase `Database` con las variables `DB_*`; repositorios con SQL puro y `%s`; un `APIRouter` por módulo
   conectado con `include_router`; 10 componentes en `lib/components`; un `api_<modulo>.js` por módulo en `lib/services`; una carpeta
   por sección en `routes/`; Navbar + contenido + Footer en `+layout.svelte`; `index.js` y `.npmrc` igual que mi-proyecto.
-- **Adaptado a este proyecto:** la guía tiene un CRUD de estudiantes; aquí cada estudiante pertenece a un colegio, por eso las rutas
-  son `/api/v1/colegio/estudiantes` y el documento se devuelve enmascarado.
+- **Adaptado a este proyecto:** la guía tiene un CRUD de estudiantes; aquí cada estudiante pertenece a un colegio (se filtra por la sesión)
+  y el formulario no pide cédula ni ningún ID: el duplicado se evita por nombre, apellido y grado.
 - **Por qué `main.py` es más grande y los services usan `peticion()`:** el proyecto tiene roles (administrador, organizador, colegio)
   y sesión por cookie. `main.py` agrega seguridad, CORS, el frontend compilado y 14 routers; `peticion()` en `api_base.js` envía la
   cookie y maneja los errores en un solo lugar.
@@ -91,6 +91,12 @@ npm run build
 # reemplazar el contenido de backend/app/frontend_dist por el de frontend/build
 ```
 
+## Cómo el frontend usa la API auxiliar
+
+El navegador solo habla con la API principal. Las peticiones a `/api/v1/aux/...` las reenvía `backend/app/api/rutas_aux.py` a Express (`AUX_API_URL`)
+con el token de la sesión. Pantallas: **PQRS** (`/pqrs`), **Comunicados** (`/comunicados`) y **Valoraciones** (`/valoraciones`), con los tres roles.
+Los módulos `pqrs`, `comunicados` y `valoraciones` se crean solos al arrancar el backend y se asignan a los tres roles.
+
 ## Rutas de la API principal (prefijo `/api/v1`)
 
 Generadas de la app; la documentación interactiva está en `/docs`.
@@ -106,11 +112,11 @@ Generadas de la app; la documentación interactiva está en `/docs`.
 | Catálogos (CRUD admin) | `PUT` | `/admin/catalogos/{tabla}/{registro_id}` |
 | Catálogos (CRUD admin) | `DELETE` | `/admin/catalogos/{tabla}/{registro_id}` |
 | Catálogos (CRUD admin) | `PATCH` | `/admin/catalogos/{tabla}/{registro_id}/estado` |
-| Estudiantes (colegio) | `GET` | `/colegio/estudiantes` |
-| Estudiantes (colegio) | `POST` | `/colegio/estudiantes` |
-| Estudiantes (colegio) | `GET` | `/colegio/estudiantes/{estudiante_id}` |
-| Estudiantes (colegio) | `PUT` | `/colegio/estudiantes/{estudiante_id}` |
-| Estudiantes (colegio) | `DELETE` | `/colegio/estudiantes/{estudiante_id}` |
+| Estudiantes | `GET` | `/estudiantes` |
+| Estudiantes | `POST` | `/estudiantes` |
+| Estudiantes | `GET` | `/estudiantes/{estudiante_id}` |
+| Estudiantes | `PUT` | `/estudiantes/{estudiante_id}` |
+| Estudiantes | `DELETE` | `/estudiantes/{estudiante_id}` |
 | Eventos (organizador) | `GET` | `/organizador/eventos` |
 | Eventos (organizador) | `POST` | `/organizador/eventos` |
 | Eventos (organizador) | `PUT` | `/organizador/eventos/{evento_id}` |
@@ -159,7 +165,7 @@ API principal: Web Service del repositorio con:
 | Root Directory | `backend` |
 | Build Command | `pip install -r requirements.txt` |
 | Start Command | `uvicorn main:app --host 0.0.0.0 --port 10000` |
-| Variables | `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_PORT`, (opcional `DB_SSLMODE=require`), `SECRET_KEY`, `COOKIE_SECURE=true`, `FORZAR_HTTPS=true`, `FRONTEND_URL` |
+| Variables | `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_PORT`, (opcional `DB_SSLMODE=require`), `SECRET_KEY`, `COOKIE_SECURE=true`, `FORZAR_HTTPS=true`, `FRONTEND_URL`, `AUX_API_URL` (URL de la API auxiliar) |
 
 (10000 es el puerto que Render usa por defecto.)
 

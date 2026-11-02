@@ -8,7 +8,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import rutas_admin, rutas_auth, rutas_catalogos, rutas_estudiantes, rutas_eventos, rutas_inscripciones, rutas_usuarios, rutas_colegios, rutas_organizadores
+from app.api import rutas_admin, rutas_auth, rutas_catalogos, rutas_estudiantes, rutas_eventos, rutas_inscripciones, rutas_usuarios, rutas_colegios, rutas_organizadores, rutas_aux
 from app.core.config import settings
 
 log = logging.getLogger("events")
@@ -77,6 +77,7 @@ app.include_router(rutas_colegios.router_admin, prefix="/api/v1")
 app.include_router(rutas_organizadores.router, prefix="/api/v1")
 app.include_router(rutas_admin.router, prefix="/api/v1")
 app.include_router(rutas_auth.router, prefix="/api/v1")
+app.include_router(rutas_aux.router, prefix="/api/v1")
 
 # Frontend compilado (SvelteKit adapter-static), cuando exista.
 DIST = Path(__file__).resolve().parent / "app" / "frontend_dist"
@@ -85,7 +86,7 @@ if (DIST / "index.html").is_file():
 
     # Rutas que existen en el frontend. Cualquier otra devuelve un 404 REAL (la pagina base
     # se entrega igual para que SvelteKit muestre su pantalla "Página no encontrada").
-    RUTAS_SPA = {"", "login", "registro", "politica-de-privacidad", "terminos", "panel", "cuenta", "admin", "organizador", "colegio"}
+    RUTAS_SPA = {"", "login", "registro", "politica-de-privacidad", "terminos", "panel", "cuenta", "admin", "organizador", "colegio", "pqrs", "comunicados", "valoraciones", "estudiantes"}
 
     @app.get("/{ruta:path}", include_in_schema=False)
     def frontend(ruta: str):

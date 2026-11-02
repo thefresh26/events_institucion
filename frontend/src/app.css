@@ -176,6 +176,9 @@ tbody tr { transition:background .2s; } tbody tr:hover { background:var(--hov); 
 	.nav { white-space:nowrap; } .nav.on::before { display:none; } .nav:hover { transform:none; }
 	.who { margin-top:8px; flex-direction:row; flex-wrap:wrap; align-items:center; }
 	main { padding:20px 16px; }
+	.logo-lado { width:150px; margin:0 auto 10px; padding:6px; }
+	th, td { padding:10px 8px; font-size:.92rem; }
+	td .row { flex-wrap:wrap !important; gap:6px; }
 }
 
 .logo-lado { display:block; background:#fff; border-radius:14px; padding:10px; margin:0 0 14px; }

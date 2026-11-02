@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:5173"
     cookie_secure: bool = True   # cookie solo por HTTPS
     forzar_https: bool = False   # redirige http -> https (true en produccion)
+    aux_api_url: str = "http://localhost:4000"  # API auxiliar (Express); en Render: la URL de ese servicio
     docs_habilitada: bool = True  # Swagger en /docs (necesario para demostrar los endpoints)
 
     class Config:

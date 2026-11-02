@@ -3,7 +3,7 @@ from app.core.database import Database
 from app.models.estudiante import EstudianteEdita, EstudianteNuevo
 
 # Columnas que se devuelven al frontend (grado por nombre, no por id)
-COLUMNAS = "id, nombre, apellido, documento, (SELECT nombre FROM grado WHERE grado.id = id_grado) AS grado"
+COLUMNAS = "id, nombre, apellido, (SELECT nombre FROM grado WHERE grado.id = id_grado) AS grado"
 
 
 class EstudianteRepository:
@@ -41,9 +41,9 @@ class EstudianteRepository:
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(f"""
-                INSERT INTO estudiante (id_colegio, id_grado, nombre, apellido, documento)
-                VALUES (%s, %s, %s, %s, %s) RETURNING {COLUMNAS};
-            """, (id_colegio, estudiante.id_grado, estudiante.nombre, estudiante.apellido, estudiante.documento))
+                INSERT INTO estudiante (id_colegio, id_grado, nombre, apellido)
+                VALUES (%s, %s, %s, %s) RETURNING {COLUMNAS};
+            """, (id_colegio, estudiante.id_grado, estudiante.nombre, estudiante.apellido))
             nuevo = cursor.fetchone()
             cursor.execute("INSERT INTO autorizacion_acudiente (id_estudiante, nombre_acudiente, vigente) VALUES (%s, %s, true);",
                            (nuevo["id"], estudiante.nombre_acudiente))
@@ -55,9 +55,9 @@ class EstudianteRepository:
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(f"""
-                UPDATE estudiante SET nombre = %s, apellido = %s, documento = COALESCE(%s, documento), id_grado = %s, actualizado = now()
+                UPDATE estudiante SET nombre = %s, apellido = %s, id_grado = %s, actualizado = now()
                 WHERE id = %s AND id_colegio = %s AND estado = true RETURNING {COLUMNAS};
-            """, (estudiante.nombre, estudiante.apellido, estudiante.documento, estudiante.id_grado, estudiante_id, id_colegio))
+            """, (estudiante.nombre, estudiante.apellido, estudiante.id_grado, estudiante_id, id_colegio))
             actualizado = cursor.fetchone()
             if actualizado:
                 auditar(cursor, id_usuario, "editar_estudiante", "estudiante", estudiante_id, ip)

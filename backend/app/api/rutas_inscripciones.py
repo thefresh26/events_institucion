@@ -51,6 +51,12 @@ def mis_inscripciones(col=Depends(colegio_actual)):
     return repo.obtener_del_colegio(col.id)
 
 
+@router_colegio.delete("/inscripciones/{inscripcion_id}", status_code=204)
+def cancelar_inscripcion(inscripcion_id: int, request: Request, col=Depends(colegio_actual)):
+    if not repo.cancelar(inscripcion_id, col.id, col.id_usuario, ip_de(request)):
+        raise HTTPException(status_code=404, detail="No encontrada o ya fue decidida por el organizador")
+
+
 # ---------------- Organizador ----------------
 @router.get("/inscripciones")
 def listar_inscripciones(org=Depends(organizador_actual)):

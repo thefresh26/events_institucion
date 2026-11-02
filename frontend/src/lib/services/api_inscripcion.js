@@ -8,6 +8,9 @@ export const inscribirse = (idEvento, estudiantes) =>
 // GET -> inscripciones del colegio que inicio sesion
 export const listarMisInscripciones = () => peticion('/colegio/inscripciones');
 
+// DELETE -> cancela una inscripcion que sigue pendiente
+export const cancelarInscripcion = (id) => peticion(`/colegio/inscripciones/${id}`, { method: 'DELETE' });
+
 // ---------------- Organizador ----------------
 // GET -> inscripciones a los eventos del organizador
 export const listarInscripciones = () => peticion('/organizador/inscripciones');

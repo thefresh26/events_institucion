@@ -20,12 +20,13 @@ Todas con `estado` (1 activo / 0 eliminado: el registro no se borra), `creado` y
 aux_api/
   index.js            arranque del servidor
   app.js              Express: middlewares, rutas y manejo de errores
-  config/             dbConfig.js (conexión MySQL) e initDb.js (crea las tablas)
-  models/             solo SQL (tipoPqrsModel, pqrsModel, comunicadoModel, valoracionModel)
-  controllers/        validaciones y respuestas (un controlador por modelo)
-  routes/             solo los endpoints (get, post, put, delete, patch)
-  middlewares/        auth.js (JWT y roles)
-  utils/              util.js (validadores y errores)
+  src/
+    config/           dbConfig.js (conexión MySQL) e initDb.js (crea las tablas)
+    models/           solo SQL (tipoPqrsModel, pqrsModel, comunicadoModel, valoracionModel)
+    controllers/      validaciones y respuestas (un controlador por modelo)
+    routes/           solo los endpoints (getX, postX, putX, deleteX)
+    middlewares/      auth.js (JWT y roles)
+    utils/            util.js (validadores y errores)
   schema.sql          tablas · script_mysql.sql: tablas + datos de ejemplo
 ```
 
@@ -44,19 +45,24 @@ npm start                  # http://localhost:4000/docs
 | Método | Ruta | Quién |
 |---|---|---|
 | GET | `/health` (sin prefijo) | público |
-| GET/POST | `/tipos-pqrs` | autenticado / administrador |
-| PUT/DELETE | `/tipos-pqrs/{id}` | administrador |
-| PATCH | `/tipos-pqrs/{id}/estado` | administrador |
-| POST/GET | `/pqrs` | autenticado (cada uno ve las suyas; el admin todas) |
-| GET | `/pqrs/{id}` | dueño o administrador |
-| PATCH | `/pqrs/{id}/responder` | administrador |
-| DELETE | `/pqrs/{id}` | administrador |
-| GET/POST | `/comunicados` | autenticado (por rol) / administrador |
-| PUT/DELETE | `/comunicados/{id}` | administrador |
-| PATCH | `/comunicados/{id}/estado` | administrador |
-| POST | `/valoraciones` | colegio |
-| GET | `/valoraciones/evento/{id}` | autenticado |
-| DELETE | `/valoraciones/{id}` | dueño o administrador |
+| GET | `/tipos-pqrs/getTipos` | autenticado |
+| POST | `/tipos-pqrs/postTipo` | administrador |
+| PUT | `/tipos-pqrs/putTipo/{id}` | administrador |
+| DELETE | `/tipos-pqrs/deleteTipo/{id}` | administrador |
+| PATCH | `/tipos-pqrs/patchEstadoTipo/{id}` | administrador |
+| POST | `/pqrs/postPqrs` | autenticado |
+| GET | `/pqrs/getPqrs` | autenticado (cada uno ve las suyas; el admin todas) |
+| GET | `/pqrs/getPqrsById/{id}` | dueño o administrador |
+| PATCH | `/pqrs/responderPqrs/{id}` | administrador |
+| DELETE | `/pqrs/deletePqrs/{id}` | administrador |
+| GET | `/comunicados/getComunicados` | autenticado (por rol) |
+| POST | `/comunicados/postComunicado` | administrador |
+| PUT | `/comunicados/putComunicado/{id}` | administrador |
+| DELETE | `/comunicados/deleteComunicado/{id}` | administrador |
+| PATCH | `/comunicados/patchEstadoComunicado/{id}` | administrador |
+| POST | `/valoraciones/postValoracion` | colegio |
+| GET | `/valoraciones/getValoracionesByEvento/{id}` | autenticado |
+| DELETE | `/valoraciones/deleteValoracion/{id}` | dueño o administrador |
 
 ## Usarla con el token de la API principal
 
@@ -80,7 +86,7 @@ Comprobado de punta a punta con el backend nuevo: el token del login de la API p
 
 ## Despliegue (Render + MySQL en la nube)
 
-1. MySQL gratuito: **Aiven for MySQL** (`DB_SSL=insecure`) o **TiDB Cloud Serverless** (`DB_SSL=true`). Crea la base y ejecuta `npm run init-db` (o pega `schema.sql`).
+1. MySQL gratuito: **Aiven for MySQL** (`DB_SSL=insecure`) o **TiDB Cloud Serverless** (`DB_SSL=true`). Crea una base vacía, pon sus datos en el `.env` y ejecuta **`npm run seed`**: crea las 4 tablas y carga los datos de ejemplo (20 pqrs, 20 comunicados, 20 valoraciones y 10 tipos). Se puede repetir sin duplicar.
 2. Render → **New Web Service** → este repositorio → **Root Directory: `aux_api`** · Build `npm install` · Start `npm start`.
 3. Variables: `DB_HOST DB_PORT DB_USER DB_PASSWORD DB_NAME DB_SSL`, `SECRET_KEY` (igual a la API principal) y **`CORS_ORIGINS` con la URL del frontend** (si falta, se acepta cualquier origen).
 4. Probar: `https://<servicio>.onrender.com/health` debe responder `{"status":"ok","mysql":"conectado"}`.

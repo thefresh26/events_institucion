@@ -49,15 +49,41 @@ class InscripcionRepository:
             cursor.execute(CONTAR.format(condicion="<> 'rechazada'"), (evento_id,))
             if cursor.fetchone()["n"] >= cupo:
                 return None
+            # Si el colegio cancelo antes, se reactiva su misma fila (UNIQUE evento + colegio) y se reemplazan sus estudiantes.
             cursor.execute("""
-                INSERT INTO inscripcion (id_evento, id_colegio, id_estado)
-                VALUES (%s, %s, (SELECT id FROM estado_inscripcion WHERE nombre = 'pendiente')) RETURNING id;
+                UPDATE inscripcion SET estado = true, actualizado = now(),
+                       id_estado = (SELECT id FROM estado_inscripcion WHERE nombre = 'pendiente')
+                WHERE id_evento = %s AND id_colegio = %s AND estado = false RETURNING id;
             """, (evento_id, id_colegio))
-            nuevo_id = cursor.fetchone()["id"]
-            cursor.executemany("INSERT INTO inscripcion_estudiante (id_inscripcion, id_estudiante, asistio) VALUES (%s, %s, false);",
+            previa = cursor.fetchone()
+            if previa:
+                nuevo_id = previa["id"]  # sus estudiantes quedaron con estado = false al cancelar: se reactivan abajo
+            else:
+                cursor.execute("""
+                    INSERT INTO inscripcion (id_evento, id_colegio, id_estado)
+                    VALUES (%s, %s, (SELECT id FROM estado_inscripcion WHERE nombre = 'pendiente')) RETURNING id;
+                """, (evento_id, id_colegio))
+                nuevo_id = cursor.fetchone()["id"]
+            cursor.executemany("""INSERT INTO inscripcion_estudiante (id_inscripcion, id_estudiante, asistio) VALUES (%s, %s, false)
+                   ON CONFLICT (id_inscripcion, id_estudiante) DO UPDATE SET estado = true, asistio = false;""",
                                [(nuevo_id, x) for x in ids])
             auditar(cursor, id_usuario, "crear_inscripcion", "inscripcion", nuevo_id, ip)
             return {"id": nuevo_id, "estado": "pendiente", "estudiantes": len(ids)}
+
+    def cancelar(self, inscripcion_id: int, id_colegio: int, id_usuario: int, ip: str | None):
+        """El colegio cancela su inscripcion mientras siga pendiente (estado = false, no se borra). False si no aplica."""
+        with self.db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE inscripcion SET estado = false, actualizado = now()
+                WHERE id = %s AND id_colegio = %s AND estado = true
+                  AND id_estado = (SELECT id FROM estado_inscripcion WHERE nombre = 'pendiente') RETURNING id;
+            """, (inscripcion_id, id_colegio))
+            if not cursor.fetchone():
+                return False
+            cursor.execute("UPDATE inscripcion_estudiante SET estado = false, actualizado = now() WHERE id_inscripcion = %s;", (inscripcion_id,))
+            auditar(cursor, id_usuario, "cancelar_inscripcion", "inscripcion", inscripcion_id, ip)
+            return True
 
     def obtener_del_colegio(self, id_colegio: int):
         with self.db.get_connection() as conn:

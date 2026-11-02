@@ -18,13 +18,13 @@
 		<p>[NOMBRE DE LA ENTIDAD RESPONSABLE], [NIT]. Contacto para temas de datos: [CORREO DE CONTACTO].</p>
 
 		<h2>2. Datos que recolectamos</h2>
-		<p><strong>Organizadores y colegios:</strong> nombre y apellido de la persona de contacto, correo, teléfono, nombre y NIT de la organización o colegio. <strong>Estudiantes:</strong> únicamente nombre, apellido, documento de identidad y grado, que registra el colegio, junto con el nombre del acudiente que autorizó el tratamiento.</p>
+		<p><strong>Organizadores y colegios:</strong> nombre y apellido de la persona de contacto, correo, teléfono, nombre y NIT de la organización o colegio. <strong>Estudiantes:</strong> únicamente nombre, apellido y grado (no pedimos documento de identidad), que registra el colegio, junto con el nombre del acudiente que autorizó el tratamiento.</p>
 
 		<h2>3. Para qué los usamos</h2>
 		<p>Gestionar cuentas, publicar eventos, inscribir colegios y estudiantes, registrar la asistencia y generar reportes para el organizador del evento. No vendemos ni cedemos los datos a terceros con fines comerciales.</p>
 
 		<h2>4. Datos de menores de edad</h2>
-		<p>Los datos de estudiantes menores de edad se tratan solo con la autorización de sus acudientes, que el colegio declara tener al registrarlos. Se recolecta lo mínimo necesario, el documento se muestra enmascarado y los reportes que contienen datos de estudiantes quedan registrados en una auditoría. Se prioriza el interés superior del niño, niña o adolescente.</p>
+		<p>Los datos de estudiantes menores de edad se tratan solo con la autorización de sus acudientes, que el colegio declara tener al registrarlos. Se recolecta lo mínimo necesario, no se solicita documento de identidad y los reportes que contienen datos de estudiantes quedan registrados en una auditoría. Se prioriza el interés superior del niño, niña o adolescente.</p>
 
 		<h2>5. Tus derechos</h2>
 		<p>Puedes conocer, actualizar, rectificar y solicitar la supresión de tus datos, revocar la autorización y presentar quejas ante la Superintendencia de Industria y Comercio. Escribe a [CORREO DE CONTACTO] indicando tu solicitud.</p>

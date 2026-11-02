@@ -4,8 +4,9 @@
   "description": "API auxiliar (Express + MySQL) de Conexión Escolar: PQRS, comunicados y valoraciones de eventos",
   "main": "index.js",
   "scripts": {
-    "start": "node config/initDb.js && node index.js",
-    "init-db": "node config/initDb.js",
+    "start": "node src/config/initDb.js && node index.js",
+    "init-db": "node src/config/initDb.js",
+    "seed": "node src/config/initDb.js --datos",
     "test": "node --test test/api.test.js"
   },
   "engines": { "node": ">=20" },

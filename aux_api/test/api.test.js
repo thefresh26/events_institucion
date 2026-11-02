@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const jwt = require('jsonwebtoken');
 const app = require('../app');
-const pool = require('../config/dbConfig');
+const pool = require('../src/config/dbConfig');
 
 let server, base;
 const token = (sub, rol, extra = {}) => jwt.sign({ sub: String(sub), rol }, process.env.SECRET_KEY, { algorithm: 'HS256', expiresIn: '1h', ...extra });
@@ -31,16 +31,16 @@ test('todas las tablas tienen estado, creado y actualizado, PK y campos unicos',
 
 test('salud, documentacion y JWT', async () => {
   assert.equal((await api('GET', '/health')).body.mysql, 'conectado');
-  assert.ok((await api('GET', '/openapi.json')).body.paths['/api/aux/pqrs']);
+  assert.ok((await api('GET', '/openapi.json')).body.paths['/api/aux/pqrs/getPqrs']);
   assert.equal((await fetch(base + '/docs')).status, 200);
-  assert.equal((await api('GET', '/api/aux/pqrs')).status, 401);                                          // sin token
-  assert.equal((await api('GET', '/api/aux/pqrs', ADMIN.slice(0, -3) + 'abc')).status, 401);              // firma alterada
-  assert.equal((await api('GET', '/api/aux/pqrs', token(1, 'administrador', { expiresIn: -10 }))).status, 401);   // vencido
-  assert.equal((await api('GET', '/api/aux/pqrs', jwt.sign({ sub: '1', rol: 'administrador' }, 'otra-clave'))).status, 401);
+  assert.equal((await api('GET', '/api/aux/pqrs/getPqrs')).status, 401);                                          // sin token
+  assert.equal((await api('GET', '/api/aux/pqrs/getPqrs', ADMIN.slice(0, -3) + 'abc')).status, 401);              // firma alterada
+  assert.equal((await api('GET', '/api/aux/pqrs/getPqrs', token(1, 'administrador', { expiresIn: -10 }))).status, 401);   // vencido
+  assert.equal((await api('GET', '/api/aux/pqrs/getPqrs', jwt.sign({ sub: '1', rol: 'administrador' }, 'otra-clave'))).status, 401);
   const [cab, , firma] = COLEGIO.split('.');                                                               // contenido cambiado sin volver a firmar:
   const subido = Buffer.from(JSON.stringify({ sub: '7', rol: 'administrador', exp: Math.floor(Date.now() / 1000) + 3600 })).toString('base64url');
-  assert.equal((await api('GET', '/api/aux/pqrs', `${cab}.${subido}.${firma}`)).status, 401);              // colegio que se "sube" a administrador
-  assert.equal((await api('GET', '/api/aux/pqrs', ADMIN)).status, 200);
+  assert.equal((await api('GET', '/api/aux/pqrs/getPqrs', `${cab}.${subido}.${firma}`)).status, 401);              // colegio que se "sube" a administrador
+  assert.equal((await api('GET', '/api/aux/pqrs/getPqrs', ADMIN)).status, 200);
 });
 
 test('sin SECRET_KEY (o con la de ejemplo) el servidor no arranca y lo explica', () => {
@@ -54,58 +54,58 @@ test('sin SECRET_KEY (o con la de ejemplo) el servidor no arranca y lo explica',
 });
 
 test('tipos de PQRS: CRUD, unico, baja logica y restaurar', async () => {
-  assert.equal((await api('POST', '/api/aux/tipos-pqrs', COLEGIO, { nombre: 'X' })).status, 403);
-  const c = await api('POST', '/api/aux/tipos-pqrs', ADMIN, { nombre: 'Tipo ' + sufijo });
+  assert.equal((await api('POST', '/api/aux/tipos-pqrs/postTipo', COLEGIO, { nombre: 'X' })).status, 403);
+  const c = await api('POST', '/api/aux/tipos-pqrs/postTipo', ADMIN, { nombre: 'Tipo ' + sufijo });
   assert.equal(c.status, 201); assert.equal(c.body.estado, 1); assert.ok(c.body.creado && c.body.actualizado);
-  assert.equal((await api('POST', '/api/aux/tipos-pqrs', ADMIN, { nombre: 'Tipo ' + sufijo })).status, 409);        // unico
-  assert.equal((await api('POST', '/api/aux/tipos-pqrs', ADMIN, { nombre: 'Otro', estado: 0 })).status, 422);       // estado no se envia al crear
-  assert.equal((await api('PUT', `/api/aux/tipos-pqrs/${c.body.id}`, ADMIN, { descripcion: 'nueva' })).body.descripcion, 'nueva');
-  assert.equal((await api('DELETE', `/api/aux/tipos-pqrs/${c.body.id}`, ADMIN)).body.estado, 0);                    // baja logica
-  assert.ok(!(await api('GET', '/api/aux/tipos-pqrs', ADMIN)).body.some((t) => t.id === c.body.id));               // ya no se lista
+  assert.equal((await api('POST', '/api/aux/tipos-pqrs/postTipo', ADMIN, { nombre: 'Tipo ' + sufijo })).status, 409);        // unico
+  assert.equal((await api('POST', '/api/aux/tipos-pqrs/postTipo', ADMIN, { nombre: 'Otro', estado: 0 })).status, 422);       // estado no se envia al crear
+  assert.equal((await api('PUT', `/api/aux/tipos-pqrs/putTipo/${c.body.id}`, ADMIN, { descripcion: 'nueva' })).body.descripcion, 'nueva');
+  assert.equal((await api('DELETE', `/api/aux/tipos-pqrs/deleteTipo/${c.body.id}`, ADMIN)).body.estado, 0);                    // baja logica
+  assert.ok(!(await api('GET', '/api/aux/tipos-pqrs/getTipos', ADMIN)).body.some((t) => t.id === c.body.id));               // ya no se lista
   const [f] = (await pool.query('SELECT estado FROM tipo_pqrs WHERE id = ?', [c.body.id]))[0];
   assert.equal(f.estado, 0);                                                                                         // pero la fila existe
-  assert.equal((await api('PATCH', `/api/aux/tipos-pqrs/${c.body.id}/estado`, ADMIN, { estado: true })).body.estado, 1);
+  assert.equal((await api('PATCH', `/api/aux/tipos-pqrs/patchEstadoTipo/${c.body.id}`, ADMIN, { estado: true })).body.estado, 1);
 });
 
 test('PQRS: el usuario solo ve las suyas, el admin responde y elimina', async () => {
-  const tipo = (await api('GET', '/api/aux/tipos-pqrs', COLEGIO)).body[0].id;
-  assert.equal((await api('POST', '/api/aux/pqrs', COLEGIO, { id_tipo: 9999, asunto: 'Hola', mensaje: 'Mensaje largo' })).status, 422);
-  const p = await api('POST', '/api/aux/pqrs', COLEGIO, { id_tipo: tipo, asunto: 'No llega el correo', mensaje: 'No recibí la confirmación' });
+  const tipo = (await api('GET', '/api/aux/tipos-pqrs/getTipos', COLEGIO)).body[0].id;
+  assert.equal((await api('POST', '/api/aux/pqrs/postPqrs', COLEGIO, { id_tipo: 9999, asunto: 'Hola', mensaje: 'Mensaje largo' })).status, 422);
+  const p = await api('POST', '/api/aux/pqrs/postPqrs', COLEGIO, { id_tipo: tipo, asunto: 'No llega el correo', mensaje: 'No recibí la confirmación' });
   assert.equal(p.status, 201); assert.match(p.body.radicado, /^PQRS-\d{4}-/); assert.equal(p.body.id_usuario, 7);
-  assert.equal((await api('GET', `/api/aux/pqrs/${p.body.id}`, COLEGIO2)).status, 404);                              // IDOR bloqueado
-  assert.ok((await api('GET', '/api/aux/pqrs', COLEGIO)).body.some((x) => x.id === p.body.id));
-  assert.ok(!(await api('GET', '/api/aux/pqrs', COLEGIO2)).body.some((x) => x.id === p.body.id));
-  assert.equal((await api('PATCH', `/api/aux/pqrs/${p.body.id}/responder`, COLEGIO, { respuesta: 'yo mismo' })).status, 403);
-  const r = await api('PATCH', `/api/aux/pqrs/${p.body.id}/responder`, ADMIN, { respuesta: 'Ya lo revisamos' });
+  assert.equal((await api('GET', `/api/aux/pqrs/getPqrsById/${p.body.id}`, COLEGIO2)).status, 404);                              // IDOR bloqueado
+  assert.ok((await api('GET', '/api/aux/pqrs/getPqrs', COLEGIO)).body.some((x) => x.id === p.body.id));
+  assert.ok(!(await api('GET', '/api/aux/pqrs/getPqrs', COLEGIO2)).body.some((x) => x.id === p.body.id));
+  assert.equal((await api('PATCH', `/api/aux/pqrs/responderPqrs/${p.body.id}`, COLEGIO, { respuesta: 'yo mismo' })).status, 403);
+  const r = await api('PATCH', `/api/aux/pqrs/responderPqrs/${p.body.id}`, ADMIN, { respuesta: 'Ya lo revisamos' });
   assert.equal(r.body.respuesta, 'Ya lo revisamos'); assert.equal(r.body.id_respondio, 1); assert.ok(r.body.respondida_en);
-  assert.equal((await api('DELETE', `/api/aux/pqrs/${p.body.id}`, ADMIN)).status, 204);
-  assert.equal((await api('GET', `/api/aux/pqrs/${p.body.id}`, ADMIN)).status, 404);
+  assert.equal((await api('DELETE', `/api/aux/pqrs/deletePqrs/${p.body.id}`, ADMIN)).status, 204);
+  assert.equal((await api('GET', `/api/aux/pqrs/getPqrsById/${p.body.id}`, ADMIN)).status, 404);
 });
 
 test('comunicados: filtrados por rol y baja logica', async () => {
   const t = 'Aviso ' + sufijo;
-  const c = await api('POST', '/api/aux/comunicados', ADMIN, { titulo: t, contenido: 'Solo para colegios', dirigido_a: 'colegio' });
+  const c = await api('POST', '/api/aux/comunicados/postComunicado', ADMIN, { titulo: t, contenido: 'Solo para colegios', dirigido_a: 'colegio' });
   assert.equal(c.status, 201); assert.equal(c.body.slug, ('aviso-' + sufijo));
-  assert.equal((await api('POST', '/api/aux/comunicados', ADMIN, { titulo: t, contenido: 'Repetido' })).status, 409);   // slug unico
-  assert.equal((await api('POST', '/api/aux/comunicados', ORG, { titulo: 'x y z', contenido: 'abcdef' })).status, 403);
-  assert.equal((await api('POST', '/api/aux/comunicados', ADMIN, { titulo: 'Malo', contenido: 'abcdef', dirigido_a: 'nadie' })).status, 422);
-  assert.ok((await api('GET', '/api/aux/comunicados', COLEGIO)).body.some((x) => x.id === c.body.id));
-  assert.ok(!(await api('GET', '/api/aux/comunicados', ORG)).body.some((x) => x.id === c.body.id));                    // no es para organizador
-  await api('DELETE', `/api/aux/comunicados/${c.body.id}`, ADMIN);
-  assert.ok(!(await api('GET', '/api/aux/comunicados', COLEGIO)).body.some((x) => x.id === c.body.id));
+  assert.equal((await api('POST', '/api/aux/comunicados/postComunicado', ADMIN, { titulo: t, contenido: 'Repetido' })).status, 409);   // slug unico
+  assert.equal((await api('POST', '/api/aux/comunicados/postComunicado', ORG, { titulo: 'x y z', contenido: 'abcdef' })).status, 403);
+  assert.equal((await api('POST', '/api/aux/comunicados/postComunicado', ADMIN, { titulo: 'Malo', contenido: 'abcdef', dirigido_a: 'nadie' })).status, 422);
+  assert.ok((await api('GET', '/api/aux/comunicados/getComunicados', COLEGIO)).body.some((x) => x.id === c.body.id));
+  assert.ok(!(await api('GET', '/api/aux/comunicados/getComunicados', ORG)).body.some((x) => x.id === c.body.id));                    // no es para organizador
+  await api('DELETE', `/api/aux/comunicados/deleteComunicado/${c.body.id}`, ADMIN);
+  assert.ok(!(await api('GET', '/api/aux/comunicados/getComunicados', COLEGIO)).body.some((x) => x.id === c.body.id));
 });
 
 test('valoraciones: 1 a 5, una por colegio y evento, promedio', async () => {
   const ev = 900000 + Math.floor(Math.random() * 90000);
-  assert.equal((await api('POST', '/api/aux/valoraciones', ORG, { id_evento: ev, puntuacion: 5 })).status, 403);     // solo colegios
-  assert.equal((await api('POST', '/api/aux/valoraciones', COLEGIO, { id_evento: ev, puntuacion: 6 })).status, 422);
-  const a = await api('POST', '/api/aux/valoraciones', COLEGIO, { id_evento: ev, puntuacion: 5, comentario: 'Excelente' });
+  assert.equal((await api('POST', '/api/aux/valoraciones/postValoracion', ORG, { id_evento: ev, puntuacion: 5 })).status, 403);     // solo colegios
+  assert.equal((await api('POST', '/api/aux/valoraciones/postValoracion', COLEGIO, { id_evento: ev, puntuacion: 6 })).status, 422);
+  const a = await api('POST', '/api/aux/valoraciones/postValoracion', COLEGIO, { id_evento: ev, puntuacion: 5, comentario: 'Excelente' });
   assert.equal(a.status, 201);
-  assert.equal((await api('POST', '/api/aux/valoraciones', COLEGIO, { id_evento: ev, puntuacion: 4 })).status, 409);  // unico (evento, usuario)
-  await api('POST', '/api/aux/valoraciones', COLEGIO2, { id_evento: ev, puntuacion: 3 });
-  const lista = await api('GET', `/api/aux/valoraciones/evento/${ev}`, ORG);
+  assert.equal((await api('POST', '/api/aux/valoraciones/postValoracion', COLEGIO, { id_evento: ev, puntuacion: 4 })).status, 409);  // unico (evento, usuario)
+  await api('POST', '/api/aux/valoraciones/postValoracion', COLEGIO2, { id_evento: ev, puntuacion: 3 });
+  const lista = await api('GET', `/api/aux/valoraciones/getValoracionesByEvento/${ev}`, ORG);
   assert.equal(lista.body.total, 2); assert.equal(lista.body.promedio, 4);
-  assert.equal((await api('DELETE', `/api/aux/valoraciones/${a.body.id}`, COLEGIO2)).status, 404);                   // no es suya
-  assert.equal((await api('DELETE', `/api/aux/valoraciones/${a.body.id}`, COLEGIO)).status, 204);
-  assert.equal((await api('GET', `/api/aux/valoraciones/evento/${ev}`, ORG)).body.total, 1);
+  assert.equal((await api('DELETE', `/api/aux/valoraciones/deleteValoracion/${a.body.id}`, COLEGIO2)).status, 404);                   // no es suya
+  assert.equal((await api('DELETE', `/api/aux/valoraciones/deleteValoracion/${a.body.id}`, COLEGIO)).status, 204);
+  assert.equal((await api('GET', `/api/aux/valoraciones/getValoracionesByEvento/${ev}`, ORG)).body.total, 1);
 });
